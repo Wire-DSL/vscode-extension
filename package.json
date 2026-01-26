@@ -1,0 +1,75 @@
+{
+  "name": "wire-dsl",
+  "displayName": "Wire DSL",
+  "description": "Syntax highlighting, autocompletion, and preview for Wire DSL (.wire) files",
+  "version": "0.2.0",
+  "publisher": "wire-dsl",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Wire-DSL/vscode-extension.git"
+  },
+  "engines": {
+    "vscode": "1.108.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Snippets",
+    "Other"
+  ],
+  "keywords": [
+    "dsl",
+    "wire",
+    "ui",
+    "declarative",
+    "dashboard"
+  ],
+  "activationEvents": [
+    "onLanguage:wire"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "wire",
+        "aliases": [
+          "Wire DSL",
+          "wire"
+        ],
+        "extensions": [
+          ".wire"
+        ],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./icons/wire-light.svg",
+          "dark": "./icons/wire-dark.svg"
+        }
+      }
+    ],
+    "grammars": [
+      {
+        "language": "wire",
+        "scopeName": "source.wire",
+        "path": "./syntaxes/wire.tmLanguage.json"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run esbuild-base -- --minify",
+    "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node",
+    "esbuild": "npm run esbuild-base -- --sourcemap",
+    "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
+    "pretest": "npm run esbuild",
+    "test": "vitest",
+    "package": "npm run vscode:prepublish && npx vsce package --out wire-dsl-extension.vsix && code --install-extension wire-dsl-extension.vsix --force",
+    "package-only": "npm run vscode:prepublish && npx vsce package --out wire-dsl-extension.vsix"
+  },
+  "devDependencies": {
+    "@types/node": "25.0.10",
+    "@types/vscode": "1.108.1",
+    "@vscode/vsce": "3.7.1",
+    "esbuild": "0.27.2",
+    "typescript": "5.9.3",
+    "vitest": "4.0.18"
+  }
+}
