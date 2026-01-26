@@ -2,7 +2,7 @@
   "name": "wire-dsl",
   "displayName": "Wire DSL",
   "description": "Syntax highlighting, autocompletion, and preview for Wire DSL (.wire) files",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "publisher": "wire-dsl",
   "license": "MIT",
   "repository": {
