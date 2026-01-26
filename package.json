@@ -10,7 +10,7 @@
     "url": "https://github.com/Wire-DSL/vscode-extension.git"
   },
   "engines": {
-    "vscode": "1.108.0"
+    "vscode": ">=1.108.0"
   },
   "categories": [
     "Programming Languages",

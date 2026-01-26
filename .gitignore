@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Build output
+out/
+dist/
+*.vsix
+
+# Development
+.DS_Store
+.vscode-test/
+test-results/
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+*.iml
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS
+Thumbs.db

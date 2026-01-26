@@ -1,0 +1,44 @@
+# Git and version control
+.git/
+.gitignore
+.gitattributes
+
+# Development
+node_modules/
+package-lock.json
+.npmrc
+
+# Build artifacts (keep out/ for extension.js)
+dist/
+
+# IDE and editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Testing
+.nyc_output/
+coverage/
+**/*.test.ts
+**/*.spec.ts
+
+# Documentation (optional - remove if want to include)
+.ai/
+CONTRIBUTING.md
+ARCHITECTURE.md
+ARCHITECTURE-DECISION.md
+TESTING.md
+test-syntax.wire
+tsconfig.json
+src/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
