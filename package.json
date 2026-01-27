@@ -2,7 +2,7 @@
   "name": "wire-dsl",
   "displayName": "Wire DSL",
   "description": "Syntax highlighting, autocompletion, and preview for Wire DSL (.wire) files",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "publisher": "wire-dsl",
   "license": "MIT",
   "repository": {
@@ -96,7 +96,7 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run esbuild-base -- --minify",
-    "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --external:@wire-dsl/core --format=cjs --platform=node",
+    "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node",
     "esbuild": "npm run esbuild-base -- --sourcemap",
     "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
     "pretest": "npm run esbuild",
