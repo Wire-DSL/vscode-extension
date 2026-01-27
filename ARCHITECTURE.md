@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Wire DSL VS Code Extension is a modular extension built in phases, starting with syntax highlighting (Phase 1) and progressively adding autocompletion, hover tooltips, and SVG preview capabilities.
+The Wire DSL VS Code Extension is a **complete, production-ready** extension providing comprehensive language support for `.wire` files. It includes syntax highlighting, intelligent autocompletion, hover documentation, code navigation, and live SVG preview capabilities.
 
 ## Project Structure
 
@@ -12,15 +12,17 @@ For directory layout, see [README.md](README.md#project-structure).
 
 | File | Purpose |
 |------|---------|
-| `src/extension.ts` | Entry point - activation and provider registration |
-| `src/completionProvider.ts` | Phase 2: Autocompletion (planned) |
-| `src/hoverProvider.ts` | Phase 3: Hover tooltips (planned) |
-| `src/definitionProvider.ts` | Go-to-definition provider |
-| `src/referenceProvider.ts` | Find references provider |
-| `src/data/components.ts` | Component metadata (Phase 2) |
-| `src/data/documentation.ts` | Hover documentation (Phase 3) |
-| `syntaxes/wire.tmLanguage.json` | TextMate grammar - syntax highlighting |
-| `language-configuration.json` | Bracket pairing, indentation, comment styles |
+| `src/extension.ts` | Entry point - activation and all provider registration |
+| `src/completionProvider.ts` | Context-aware code completion for keywords, components, and properties |
+| `src/hoverProvider.ts` | Hover documentation for components, properties, and keywords |
+| `src/definitionProvider.ts` | Go-to-definition navigation (Ctrl+Click) |
+| `src/referenceProvider.ts` | Find references (Ctrl+Shift+H) - finds all usages |
+| `src/webviewPanelProvider.ts` | Live SVG preview panel with zoom and theme support |
+| `src/data/components.ts` | Component definitions (names, properties, types) |
+| `src/data/documentation.ts` | Full documentation for all components and properties |
+| `src/utils/documentParser.ts` | DSL parsing and analysis utilities |
+| `syntaxes/wire.tmLanguage.json` | TextMate grammar - syntax highlighting rules |
+| `language-configuration.json` | Language configuration (bracket pairs, comments, indentation) |
 | `package.json` | Extension manifest & VS Code contributions |
 
 ## Component Breakdown
@@ -31,18 +33,27 @@ The activation function is called when VS Code detects a `.wire` file.
 
 ```typescript
 export function activate(context: vscode.ExtensionContext) {
-  // Phase 1: TextMate grammar handles syntax highlighting automatically
-  // Phase 2: Register CompletionItemProvider
-  // Phase 3: Register HoverProvider
-  // Phase 4: Register WebviewViewProvider
+  // Register all language providers
+  const completionProvider = new WireCompletionProvider();
+  const hoverProvider = new WireHoverProvider();
+  const definitionProvider = new WireDefinitionProvider();
+  const referenceProvider = new WireReferenceProvider();
   
-  context.subscriptions.push(...providers);
+  // Each provider handles specific language features
+  vscode.languages.registerCompletionItemProvider(...);
+  vscode.languages.registerHoverProvider(...);
+  vscode.languages.registerDefinitionProvider(...);
+  vscode.languages.registerReferenceProvider(...);
+  
+  // Register preview panel command
+  vscode.commands.registerCommand('wire.openPreview', ...);
 }
 ```
 
 **Key responsibilities:**
-- Initialize extension when `.wire` file is opened
+- Activate when `.wire` file is opened
 - Register all language providers
+- Register preview panel command
 - Manage lifecycle and cleanup
 
 ### 2. **wire.tmLanguage.json** (Syntax Highlighting)
@@ -98,40 +109,30 @@ Defines:
 {
   "name": "wire-dsl",
   "displayName": "Wire DSL",
-  "version": "0.1.0",
-  "engines": { "vscode": "^1.75.0" }
+  "version": "0.2.3",
+  "engines": { "vscode": ">=1.108.0" }
 }
 ```
 
 **Activation:**
 ```json
 {
-  "activationEvents": ["onLanguage:wire"]
+  "activationEvents": ["onLanguage:wire", "onCommand:wire.openPreview"]
 }
 ```
 - Extension activates when `.wire` file is opened (lazy loading for performance)
+- Also activates when preview command is triggered
 
 **Contributions:**
-```json
-{
-  "contributes": {
-    "languages": [{
-      "id": "wire",
-      "extensions": [".wire"],
-      "configuration": "./language-configuration.json"
-    }],
-    "grammars": [{
-      "language": "wire",
-      "scopeName": "source.wire",
-      "path": "./syntaxes/wire.tmLanguage.json"
-    }]
-  }
-}
-```
+- Language configuration for `.wire` files
+- TextMate grammar for syntax highlighting
+- Custom command for opening preview panel
+- Menu integration in editor title bar
+- Keyboard shortcut (Ctrl+Shift+V)
 
-### 5. **completionProvider.ts** (Phase 2 - Planned)
+### 5. **completionProvider.ts** (Autocompletion)
 
-Will implement `vscode.CompletionItemProvider` for context-aware code completion:
+Implements `vscode.CompletionItemProvider` for context-aware code completion:
 
 ```typescript
 class WireCompletionProvider implements vscode.CompletionItemProvider {
@@ -148,7 +149,14 @@ class WireCompletionProvider implements vscode.CompletionItemProvider {
 }
 ```
 
-**Data structure from Phase 2:**
+**Features:**
+- Context-aware suggestions based on cursor position
+- Component property completion with type hints
+- Layout type completion
+- Property value completion (spacing tokens, colors)
+- Smart trigger characters: space, `(`, `:`, `{`
+
+**Data structure:**
 
 ```typescript
 // data/components.ts
@@ -162,9 +170,9 @@ export const COMPONENTS = {
 };
 ```
 
-### 6. **hoverProvider.ts** (Phase 3 - Planned)
+### 6. **hoverProvider.ts** (Hover Tooltips & Documentation)
 
-Will implement `vscode.HoverProvider` to show documentation on hover:
+Implements `vscode.HoverProvider` to show documentation on hover:
 
 ```typescript
 class WireHoverProvider implements vscode.HoverProvider {
@@ -176,42 +184,86 @@ class WireHoverProvider implements vscode.HoverProvider {
 }
 ```
 
+**Features:**
+- Hover documentation for components
+- Property descriptions with usage examples
+- Keyword definitions
+- Automatic tooltip display on mouse over
+
 **Documentation data:**
 ```typescript
 // data/documentation.ts
-export const DOCUMENTATION = {
-  Button: {
-    description: 'A clickable button component',
-    properties: {
-      label: 'Text displayed on the button',
+export function getComponentDocumentation(componentName: string): string | null {
+  // Returns full documentation for component
+}
 
-    },
-    examples: [
-      'Button { label: "Submit" }',
-      'Button { label: "Cancel", variant: "secondary" }'
-    ]
-  }
-};
+export function getPropertyDocumentation(componentName: string, propertyName: string): string | null {
+  // Returns property-specific documentation
+}
 ```
 
-### 7. **webviewProvider.ts** (Phase 4 - Planned)
+### 7. **definitionProvider.ts** (Go-to-Definition)
 
-Will implement `vscode.WebviewViewProvider` for SVG preview:
+Implements `vscode.DefinitionProvider` for code navigation:
 
 ```typescript
-class WirePreviewProvider implements vscode.WebviewViewProvider {
-  resolveWebviewView(webviewView): void {
-    // Parse current .wire file using @wire-dsl/core
-    // Render to SVG using SVGRenderer
-    // Display in webview
-    // Watch for file changes and refresh
+class WireDefinitionProvider implements vscode.DefinitionProvider {
+  provideDefinition(document, position, token): Location[] {
+    // Find definition location of component or reference
+    // Returns Location pointing to definition
   }
 }
 ```
 
+**Features:**
+- Ctrl+Click navigation to component definitions
+- Works for component references and usages
+- Accurate position tracking
+
+### 8. **referenceProvider.ts** (Find References)
+
+Implements `vscode.ReferenceProvider` to find all usages:
+
+```typescript
+class WireReferenceProvider implements vscode.ReferenceProvider {
+  provideReferences(document, position, token): Location[] {
+    // Find all usages of component or reference
+    // Returns array of all reference locations
+  }
+}
+```
+
+**Features:**
+- Ctrl+Shift+H to find all references
+- Shows all usages throughout the file
+- Integration with VS Code Reference panel
+
+### 9. **webviewPanelProvider.ts** (SVG Preview Panel)
+
+Implements live SVG preview as a WebviewPanel (like Markdown preview):
+
+```typescript
+class WirePreviewPanel {
+  static openPreview(extensionUri: vscode.Uri): void {
+    // Create WebviewPanel
+    // Parse .wire file
+    // Render SVG
+    // Handle zoom and theme changes
+  }
+}
+```
+
+**Features:**
+- Real-time SVG rendering as you type
+- Zoom controls (Ctrl+Scroll or buttons)
+- Theme toggle (Dark/Light/Auto)
+- Auto-refresh on file save
+- Keyboard shortcuts (Ctrl+Shift+V to open)
+- Configuration settings for default theme
+
 ## Data Flow
 
-### Phase 1: Syntax Highlighting
+### Syntax Highlighting
 
 ```
 .wire file opened
@@ -229,7 +281,7 @@ Scopes matched to VS Code theme colors
 Syntax highlighting displayed ✓
 ```
 
-### Phase 2: Autocompletion (Future)
+### Code Completion
 
 ```
 User types in .wire file
@@ -247,28 +299,32 @@ VS Code displays IntelliSense popup
 User selects completion, insertText inserted ✓
 ```
 
-### Phase 3: Hover Tooltips (Future)
+### Hover Documentation & Navigation
 
 ```
-User hovers mouse over element
+User hovers mouse over element / presses Ctrl+Click
         ↓
-HoverProvider.provideHover() called
+HoverProvider.provideHover() called / DefinitionProvider.provideDefinition() called
         ↓
 Get word at cursor position
         ↓
-Look up in documentation map
+Look up in documentation/definition map
         ↓
-Return Hover with MarkdownString
+Return Hover with MarkdownString or Location
         ↓
-VS Code displays tooltip ✓
+VS Code displays tooltip or navigates ✓
 ```
 
-### Phase 4: SVG Preview (Future)
+**Navigation Features:**
+- Ctrl+Click → Go to definition (DefinitionProvider)
+- Ctrl+Shift+H → Find references (ReferenceProvider)
+
+### SVG Preview Panel
 
 ```
-User opens preview panel (Cmd)
+User opens preview panel (Ctrl+Shift+V)
         ↓
-WebviewViewProvider.resolveWebviewView() called
+WebviewPanel.openPreview() called
         ↓
 Read current .wire file content
         ↓
@@ -291,16 +347,16 @@ Webview displays interactive preview ✓
 
 - **vscode.languages**: Register providers for language features
 - **vscode.window**: Show UI elements (notifications, input boxes)
-- **vscode.workspace**: Monitor file changes
+- **vscode.workspace**: Monitor file changes and settings
 - **vscode.ExtensionContext**: Manage subscriptions and cleanup
 - **vscode.commands**: Register custom commands
+- **vscode.WebviewPanel**: Host preview panel
 - **TextMate Grammar**: Built-in tokenization without code
 
 ### With Wire DSL Core
 
-**Current (Phase 1):** No dependency on core
+**Current:** Integration implemented via `@wire-dsl/core` package
 
-**Future (Phase 4):**
 ```typescript
 import { parse } from '@wire-dsl/core';
 import { SVGRenderer } from '@wire-dsl/core';
@@ -313,23 +369,25 @@ const svg = new SVGRenderer().render(ast);
 
 1. **Lazy Loading**: Extension only activates when `.wire` file is opened
 2. **TextMate Grammar**: Efficient tokenization (built into VS Code)
-3. **Incremental Parsing**: Phase 2-3 should cache parse results
-4. **Webview**: Phase 4 should debounce rendering (re-render on save, not on keystroke)
+3. **Incremental Parsing**: Language providers cache parse results
+4. **Webview**: Debounces rendering (re-render on save, not on keystroke)
 
 ## Testing Strategy
 
 1. **Syntax Highlighting**: Visual inspection of colors in test file
 2. **Autocompletion**: Test context detection with various code positions
 3. **Hover**: Test documentation lookup for edge cases
-4. **Preview**: Compare SVG output with expected layout
+4. **Navigation**: Test go-to-definition and find references
+5. **Preview**: Compare SVG output with expected layout
 
-## Future Extensions
+## Future Enhancements
 
 - Error diagnostics via Language Server Protocol (LSP)
 - Code formatter (`npm run format`)
 - Snippets for common patterns
 - Custom theme support
 - Export to other formats (React, HTML, etc.)
+- Performance optimizations for large files
 
 ## Deployment
 
@@ -348,8 +406,11 @@ vsce publish              # Publish to marketplace
 
 ## Key Technologies
 
-- **VS Code Extension API** 1.75.0+
-- **TypeScript** 5.9+
+- **VS Code Extension API** 1.108.0+
+- **TypeScript** 5.0+
+- **TextMate Grammar** (JSON format)
+- **esbuild** (Bundler)
+- **Wire DSL Core** @wire-dsl/core (for SVG rendering)
 - **TextMate Grammar** (JSON format)
 - **esbuild** (Bundler)
 - **Wire DSL Core** @wire-dsl/core (Phase 4+)

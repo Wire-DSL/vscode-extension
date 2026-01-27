@@ -14,6 +14,8 @@ export class WirePreviewPanel {
   private debounceTimer: NodeJS.Timeout | undefined;
   private currentTheme: 'light' | 'dark' = 'dark';
   private lastContent: string = '';
+  private availableScreens: string[] = [];
+  private selectedScreen: string = '';
 
   private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri) {
     this.panel = panel;
@@ -33,6 +35,12 @@ export class WirePreviewPanel {
         if (message.command === 'setTheme') {
           this.currentTheme = message.theme;
           // Rerendorizar con el contenido guardado sin necesidad de cambiar de archivo
+          if (this.lastContent) {
+            this.updatePreview(this.lastContent);
+          }
+        } else if (message.command === 'selectScreen') {
+          this.selectedScreen = message.screen;
+          // Rerendorizar con la pantalla seleccionada
           if (this.lastContent) {
             this.updatePreview(this.lastContent);
           }
@@ -159,12 +167,32 @@ export class WirePreviewPanel {
       // Parse → IR → Layout → SVG
       const ast = parseWireDSL(content);
       const ir = generateIR(ast);
+      
+      // Extraer nombres de las screens del IR
+      let screens: string[] = [];
+      
+      // La estructura es ir.project.screens
+      if (ir && ir.project && ir.project.screens && Array.isArray(ir.project.screens)) {
+        screens = ir.project.screens.map((s: any) => s.name || 'Unknown');
+        console.log('Found screens:', screens);
+      } else {
+        console.log('Could not find screens in ir.project.screens');
+      }
+      
+      this.availableScreens = screens;
+      
+      // Inicializar selectedScreen si no existe
+      if (!this.selectedScreen && screens.length > 0) {
+        this.selectedScreen = screens[0];
+      }
+      
       const layout = calculateLayout(ir);
       let svg = renderToSVG(ir, layout, {
         width: 1300,
         height: 700,
         theme: this.currentTheme,
         includeLabels: true,
+        screenName: this.selectedScreen, // Pasar el nombre de la pantalla seleccionada
       });
 
       if (!svg || typeof svg !== 'string') {
@@ -181,7 +209,7 @@ export class WirePreviewPanel {
       }
 
       console.log('Preview rendered successfully, SVG size:', svg.length);
-      this.panel.webview.html = this.createHtmlWithSvg(svg);
+      this.panel.webview.html = this.createHtmlWithSvg(svg, screens, this.selectedScreen);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       console.error('Preview render error:', msg);
@@ -198,7 +226,13 @@ export class WirePreviewPanel {
     }, 300); // Reduced from 500ms
   }
 
-  private createHtmlWithSvg(svg: string): string {
+  private createHtmlWithSvg(svg: string, screens: string[] = [], selectedScreen: string = ''): string {
+    const screensHtml = screens.length > 1 ? `
+    <select id="screenSelector">
+      ${screens.map(screen => `<option value="${screen}" ${screen === selectedScreen ? 'selected' : ''}>${screen}</option>`).join('\n      ')}
+    </select>
+    <div class="separator"></div>` : '';
+    
     return `<!DOCTYPE html>
 <html>
 <head>
@@ -247,6 +281,19 @@ export class WirePreviewPanel {
     button:active {
       opacity: 0.8;
     }
+    select {
+      background: var(--vscode-input-background);
+      color: var(--vscode-input-foreground);
+      border: 1px solid var(--vscode-input-border);
+      border-radius: 2px;
+      padding: 4px 8px;
+      cursor: pointer;
+      font-size: 12px;
+      font-family: system-ui;
+    }
+    select:hover {
+      border-color: var(--vscode-focusBorder);
+    }
     .zoom-display {
       color: var(--vscode-descriptionForeground);
       font-size: 12px;
@@ -272,6 +319,7 @@ export class WirePreviewPanel {
 </head>
 <body>
   <div class="toolbar">
+    ${screensHtml}
     <button id="zoomIn">Zoom In</button>
     <button id="zoomOut">Zoom Out</button>
     <button id="reset">Reset</button>
@@ -291,6 +339,7 @@ export class WirePreviewPanel {
     const preview = document.getElementById('preview');
     const zoomDisplay = document.getElementById('zoomLevel');
     const toggleThemeBtn = document.getElementById('toggleTheme');
+    const screenSelector = document.getElementById('screenSelector');
     
     // Config
     const ORIGINAL_WIDTH = parseFloat(svg.getAttribute('width')) || 1300;
@@ -299,9 +348,10 @@ export class WirePreviewPanel {
     const MIN_ZOOM = 0.1;
     const MAX_ZOOM = 3;
     
-    // Estado
-    let currentZoom = 1;
-    let isDarkMode = true;
+    // Restaurar estado previo
+    const previousState = vscode.getState() || {};
+    let currentZoom = previousState.zoomLevel || 1;
+    let isDarkMode = previousState.isDarkMode !== undefined ? previousState.isDarkMode : true;
     
     // Calcular zoom para que quepa en pantalla
     function calculateFitZoom() {
@@ -313,7 +363,11 @@ export class WirePreviewPanel {
     }
     
     const fitZoom = calculateFitZoom();
-    currentZoom = fitZoom;
+    
+    // Si no había estado previo, usar fit zoom
+    if (!previousState.zoomLevel) {
+      currentZoom = fitZoom;
+    }
 
     function updateZoom() {
       const scale = currentZoom;
@@ -324,6 +378,12 @@ export class WirePreviewPanel {
       svg.style.height = newHeight + 'px';
       
       zoomDisplay.textContent = Math.round(scale * 100);
+      
+      // Guardar estado
+      vscode.setState({
+        zoomLevel: currentZoom,
+        isDarkMode: isDarkMode
+      });
       
       // Centrar el scroll al 50% cuando hay overflow
       setTimeout(() => {
@@ -345,7 +405,12 @@ export class WirePreviewPanel {
         toggleThemeBtn.textContent = '☀️';
         toggleThemeBtn.title = 'Switch to Dark Mode';
       }
-      localStorage.setItem('wireTheme', newTheme);
+      
+      // Guardar estado
+      vscode.setState({
+        zoomLevel: currentZoom,
+        isDarkMode: isDarkMode
+      });
       
       vscode.postMessage({
         command: 'setTheme',
@@ -370,6 +435,16 @@ export class WirePreviewPanel {
 
     toggleThemeBtn.addEventListener('click', toggleTheme);
 
+    // Screen selector
+    if (screenSelector) {
+      screenSelector.addEventListener('change', (e) => {
+        vscode.postMessage({
+          command: 'selectScreen',
+          screen: e.target.value
+        });
+      });
+    }
+
     // Ctrl/Cmd + scroll para zoom
     preview.addEventListener('wheel', (e) => {
       if (e.ctrlKey || e.metaKey) {
@@ -380,10 +455,8 @@ export class WirePreviewPanel {
       }
     });
 
-    // Restaurar tema guardado
-    const savedTheme = localStorage.getItem('wireTheme');
-    if (savedTheme === 'light') {
-      isDarkMode = true;
+    // Aplicar tema guardado
+    if (!isDarkMode) {
       toggleTheme();
     }
 

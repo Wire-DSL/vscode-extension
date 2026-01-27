@@ -4,29 +4,31 @@ Syntax highlighting, autocompletion, and preview for **Wire DSL** `.wire` files.
 
 ## Features
 
-### ✅ Phase 1: Syntax Highlighting (Current)
-- **Keywords** highlighting (`project`, `screen`, `stack`, `grid`, `panel`, `split`, `form`, `table`)
-- **Component types** highlighting (40+ UI components: `Button`, `Input`, `Card`, `Table`, etc.)
-- **Properties** highlighting (`id`, `label`, `color`, `background`, `width`, `height`, etc.)
-- **Colors** highlighting (hex colors `#RRGGBB` and named colors)
-- **Numbers** and spacing tokens (`xs`, `sm`, `md`, `lg`, `xl`)
-- **Comments** support (`//` and `/* */`)
+### 🎨 Syntax Highlighting
+Complete syntax highlighting for Wire DSL with intelligent tokenization:
+- **Keywords** (`project`, `screen`, `stack`, `grid`, `panel`, `split`, `form`, `table`)
+- **Components** (40+ UI components: `Button`, `Input`, `Card`, `Table`, etc.)
+- **Properties** (`id`, `label`, `color`, `background`, `width`, `height`, etc.)
+- **Values** (colors, spacing tokens, numbers)
+- **Comments** (`//` and `/* */` with proper styling)
 - **Bracket matching** and auto-pairing
 
-### 📋 Phase 2: Autocompletion (Upcoming)
-- Context-aware completions for keywords, components, and properties
-- Snippet suggestions for common patterns
-- Type-safe property suggestions
+### 💡 Code Intelligence
+Context-aware development experience:
+- **Autocompletion** (Ctrl+Space) - Intelligent suggestions for keywords, components, and properties
+- **Hover Documentation** - Full component and property documentation on hover
+- **Go-to-Definition** (Ctrl+Click) - Jump to component definitions
+- **Find References** (Ctrl+Shift+H) - Find all usages of components
 
-### 💡 Phase 3: Hover Tooltips (Upcoming)
-- Component documentation on hover
-- Property descriptions and examples
-- Keyboard shortcut reference
-
-### 👁️ Phase 4: SVG Preview (Upcoming)
-- Live preview of `.wire` files rendered as interactive SVG
-- Light/dark theme support
-- Auto-refresh on file save
+### 👁️ Live Preview
+Real-time visual feedback as you code:
+- **Interactive SVG Rendering** - See your Wire DSL rendered as interactive SVG
+- **Multi-Screen Support** - Switch between screens with a dropdown selector (when file has multiple screens)
+- **Persistent Zoom** - Zoom level is maintained when switching screens or editing code
+- **Dark/Light Theme Support** - Toggle between themes with automatic VS Code detection
+- **Zoom Controls** - Zoom in/out with Ctrl+Scroll wheel or on-screen buttons
+- **Auto-Refresh** - Updates automatically on file save
+- **Keyboard Shortcuts** (Ctrl+Shift+V to open)
 
 ## Installation
 
@@ -96,20 +98,26 @@ This is a **standalone npm project** (independent from the monorepo pnpm).
 ```
 vscode-extension/
 ├── src/
-│   ├── extension.ts          # Entry point
-│   ├── completionProvider.ts # Phase 2: Autocompletion (planned)
-│   ├── hoverProvider.ts      # Phase 3: Hover tooltips (planned)
-│   ├── referenceProvider.ts  # Find references
-│   ├── definitionProvider.ts # Go-to-definition
-│   └── data/                 # Component metadata
+│   ├── extension.ts                  # Entry point & provider registration
+│   ├── completionProvider.ts         # Intelligent context-aware completions
+│   ├── hoverProvider.ts              # Hover documentation tooltips
+│   ├── definitionProvider.ts         # Go-to-definition navigation
+│   ├── referenceProvider.ts          # Find references (all usages)
+│   ├── webviewPanelProvider.ts       # Live SVG preview panel
+│   ├── webviewProvider.ts            # Alternative webview provider
+│   ├── data/                         # Component metadata & documentation
+│   │   ├── components.ts             # Component definitions
+│   │   └── documentation.ts          # Component & property docs
+│   └── utils/
+│       └── documentParser.ts         # DSL parsing utilities
 ├── syntaxes/
-│   └── wire.tmLanguage.json  # TextMate grammar (syntax highlighting)
-├── package.json              # npm dependencies & manifest
-├── package-lock.json         # Locked versions (use npm)
-├── tsconfig.json             # TypeScript configuration
-├── language-configuration.json # Bracket pairing, indentation
-├── .npmrc                    # npm config (force npm usage)
-└── icons/                    # VS Code extension icons
+│   └── wire.tmLanguage.json          # TextMate grammar (syntax highlighting)
+├── package.json                      # npm dependencies & manifest
+├── package-lock.json                 # Locked versions (use npm)
+├── tsconfig.json                     # TypeScript configuration
+├── language-configuration.json       # Bracket pairing, indentation
+├── .npmrc                            # npm config (force npm usage)
+└── icons/                            # VS Code extension icons
 
 ```
 
@@ -117,11 +125,21 @@ For detailed architecture information, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Usage
 
-1. Open or create a `.wire` file
-2. Syntax highlighting is automatically applied
-3. Use Ctrl+Space (Cmd+Space on Mac) for autocomplete (Phase 2)
-4. Hover over elements for documentation (Phase 3)
-5. Open preview panel for SVG rendering (Phase 4)
+1. **Open a `.wire` file** - The extension automatically activates and applies syntax highlighting
+2. **Get code completion** - Press Ctrl+Space (Cmd+Space on macOS) or start typing to see intelligent suggestions
+3. **Explore documentation** - Hover over components and properties to see detailed documentation
+4. **Navigate your code** - Use Ctrl+Click to jump to definitions or Ctrl+Shift+H to find all references
+5. **Preview in real-time** - Press Ctrl+Shift+V (or click "Open Preview" in the editor title bar) to see live SVG rendering
+
+### Keyboard Shortcuts
+
+| Action | Shortcut | Mac |
+|--------|----------|-----|
+| Open Preview | Ctrl+Shift+V | Cmd+Shift+V |
+| Find References | Ctrl+Shift+H | Cmd+Shift+H |
+| Go to Definition | Ctrl+Click | Cmd+Click |
+| Zoom In (Preview) | Ctrl+Scroll | Cmd+Scroll |
+| Zoom Out (Preview) | Ctrl+Scroll | Cmd+Scroll |
 
 ## Example
 
