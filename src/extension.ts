@@ -3,14 +3,19 @@ import { WireCompletionProvider } from './completionProvider';
 import { WireHoverProvider } from './hoverProvider';
 import { WireDefinitionProvider } from './definitionProvider';
 import { WireReferenceProvider } from './referenceProvider';
+import { WirePreviewPanel } from './webviewPanelProvider';
 
 export function activate(context: vscode.ExtensionContext) {
-  console.log('Wire DSL extension activated');
+  console.log('🔥 Wire DSL extension activated');
+  console.log('Extension URI:', context.extensionUri.fsPath);
+
+  // Define document selector with scheme
+  const selector: vscode.DocumentSelector = { language: 'wire', scheme: 'file' };
 
   // Register Completion Provider
   const completionProvider = new WireCompletionProvider();
   const completionDisposable = vscode.languages.registerCompletionItemProvider(
-    'wire',
+    selector,
     completionProvider,
     ' ', // Trigger on space
     '(', // Trigger on opening paren
@@ -21,13 +26,13 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Register Hover Provider
   const hoverProvider = new WireHoverProvider();
-  const hoverDisposable = vscode.languages.registerHoverProvider('wire', hoverProvider);
+  const hoverDisposable = vscode.languages.registerHoverProvider(selector, hoverProvider);
   context.subscriptions.push(hoverDisposable);
 
   // Register Definition Provider (Go-to-Definition)
   const definitionProvider = new WireDefinitionProvider();
   const definitionDisposable = vscode.languages.registerDefinitionProvider(
-    'wire',
+    selector,
     definitionProvider
   );
   context.subscriptions.push(definitionDisposable);
@@ -35,12 +40,23 @@ export function activate(context: vscode.ExtensionContext) {
   // Register Reference Provider (Go-to-References)
   const referenceProvider = new WireReferenceProvider();
   const referenceDisposable = vscode.languages.registerReferenceProvider(
-    'wire',
+    selector,
     referenceProvider
   );
   context.subscriptions.push(referenceDisposable);
 
-  // Future: register WebviewViewProvider
+  // Register Preview Panel Command
+  console.log('\n=== PREVIEW PANEL REGISTRATION START ===');
+  const previewCommand = vscode.commands.registerCommand(
+    'wire.openPreview',
+    () => {
+      console.log('✓ Wire preview command triggered');
+      WirePreviewPanel.openPreview(context.extensionUri);
+    }
+  );
+  context.subscriptions.push(previewCommand);
+  console.log('✓ Preview command registered: wire.openPreview');
+  console.log('=== PREVIEW PANEL REGISTRATION END ===\n');
 }
 
 export function deactivate() {

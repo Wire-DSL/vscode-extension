@@ -3,8 +3,9 @@
 .gitignore
 .gitattributes
 
-# Development
+# Development (but keep @wire-dsl/core)
 node_modules/
+!node_modules/@wire-dsl/
 package-lock.json
 .npmrc
 

@@ -2,7 +2,7 @@
   "name": "wire-dsl",
   "displayName": "Wire DSL",
   "description": "Syntax highlighting, autocompletion, and preview for Wire DSL (.wire) files",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "publisher": "wire-dsl",
   "license": "MIT",
   "repository": {
@@ -25,7 +25,8 @@
     "dashboard"
   ],
   "activationEvents": [
-    "onLanguage:wire"
+    "onLanguage:wire",
+    "onCommand:wire.openPreview"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -52,17 +53,59 @@
         "scopeName": "source.wire",
         "path": "./syntaxes/wire.tmLanguage.json"
       }
-    ]
+    ],
+    "commands": [
+      {
+        "command": "wire.openPreview",
+        "title": "Open Preview",
+        "category": "Wire",
+        "icon": {
+          "light": "./icons/preview-light.svg",
+          "dark": "./icons/preview-dark.svg"
+        }
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "wire.openPreview",
+          "when": "resourceLangId == wire",
+          "group": "navigation"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "wire.openPreview",
+        "key": "ctrl+shift+v",
+        "mac": "cmd+shift+v",
+        "when": "resourceLangId == wire"
+      }
+    ],
+    "configuration": {
+      "title": "Wire DSL",
+      "properties": {
+        "wire.preview.defaultTheme": {
+          "type": "string",
+          "enum": ["default", "dark", "light"],
+          "default": "default",
+          "description": "Default theme for Wire DSL preview render ('default' uses your editor theme)"
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run esbuild-base -- --minify",
-    "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node",
+    "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --external:@wire-dsl/core --format=cjs --platform=node",
     "esbuild": "npm run esbuild-base -- --sourcemap",
     "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
     "pretest": "npm run esbuild",
     "test": "vitest",
     "package": "npm run vscode:prepublish && npx vsce package --out wire-dsl-extension.vsix && code --install-extension wire-dsl-extension.vsix --force",
     "package-only": "npm run vscode:prepublish && npx vsce package --out wire-dsl-extension.vsix"
+  },
+  "dependencies": {
+    "@wire-dsl/core": "^0.0.1"
   },
   "devDependencies": {
     "@types/node": "25.0.10",
