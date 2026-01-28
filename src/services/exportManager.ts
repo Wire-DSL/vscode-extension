@@ -59,11 +59,6 @@ export class ExportManager {
 
     // Determine default filename
     const baseName = currentFileName.replace(/\.wire$/, '');
-    const defaultFilePath = baseName + availableFormats[0].ext;
-
-    const defaultUri = lastDir
-      ? vscode.Uri.file(path.join(lastDir, defaultFilePath))
-      : vscode.Uri.file(defaultFilePath);
 
     // If only one format available, skip QuickPick
     let selectedFormat: ExportFormat;
@@ -89,6 +84,12 @@ export class ExportManager {
 
       selectedFormat = selection.value;
     }
+
+    // Create default filename based on selected format
+    const defaultFilePath = baseName + selectedFormat.ext;
+    const defaultUri = lastDir
+      ? vscode.Uri.file(path.join(lastDir, defaultFilePath))
+      : vscode.Uri.file(defaultFilePath);
 
     // Show save dialog
     const fileUri = await vscode.window.showSaveDialog({
@@ -162,7 +163,7 @@ export class ExportManager {
   ): Promise<void> {
     try {
       const { exportSVG } = require('@wire-dsl/core');
-      const svg = exportSVG(ir, layout, { theme });
+      const svg = await exportSVG(ir, layout, { theme });
       await fs.promises.writeFile(fileUri.fsPath, svg, 'utf8');
     } catch (e) {
       throw new Error(`SVG export failed: ${e instanceof Error ? e.message : String(e)}`);
@@ -180,7 +181,7 @@ export class ExportManager {
   ): Promise<void> {
     try {
       const { exportMultipagePDF } = require('@wire-dsl/core');
-      const buffer = exportMultipagePDF(ir, layout, { theme });
+      const buffer = await exportMultipagePDF(ir, layout, { theme });
       await fs.promises.writeFile(fileUri.fsPath, buffer);
     } catch (e) {
       throw new Error(`PDF export failed: ${e instanceof Error ? e.message : String(e)}`);
@@ -198,7 +199,7 @@ export class ExportManager {
   ): Promise<void> {
     try {
       const { exportPNG } = require('@wire-dsl/core');
-      const buffer = exportPNG(ir, layout, { theme });
+      const buffer = await exportPNG(ir, layout, { theme });
       await fs.promises.writeFile(fileUri.fsPath, buffer);
     } catch (e) {
       throw new Error(`PNG export failed: ${e instanceof Error ? e.message : String(e)}`);
