@@ -10,7 +10,7 @@
 
 ## 📋 Overview
 
-Implement a new **"Export As"** feature in the Wire DSL VS Code Extension that allows users to save their rendered preview as SVG files. The UI will be designed as an extensible framework that can easily accommodate PDF and PNG exports once the `@wire-dsl/core` package implements the necessary exporter functionality.
+Implement a complete **"Export As"** feature in the Wire DSL VS Code Extension that allows users to save their rendered preview as **SVG, PDF, or PNG files**. The feature integrates seamlessly with `@wire-dsl/core` v0.1.1+ which provides native exporters for all three formats.
 
 ### Vision
 
@@ -21,31 +21,19 @@ Current State:
 Target State:
   .wire file → [Preview Panel with Export UI] → Save as SVG/PDF/PNG
                                               ↓
-                                         Export Dialog
+                                         Export Dialog (format + location)
                                               ↓
-                                         File saved
+                                         File saved via @wire-dsl/core
 ```
 
 ---
 
-## 🎯 Phase 1: SVG Export with Extensible UI
+## ✅ Phase 1 & 2 Complete: SVG, PDF, PNG Export
 
-### Acceptance Criteria
-
-- ✅ User can click "Export" button in preview panel
-- ✅ Dialog shows export format options (currently only SVG)
-- ✅ User can choose save location
-- ✅ SVG file is saved with suggested filename (based on `.wire` filename)
-- ✅ Success/error notifications shown to user
-- ✅ Last save directory is remembered in VS Code settings
-- ✅ Code structure allows easy addition of PDF/PNG when Core implements them
-
-### Non-Goals for Phase 1
-
-- ❌ PDF export (waiting for Core implementation)
-- ❌ PNG export (waiting for Core implementation)
-- ❌ Batch export
-- ❌ Custom export settings (width, height, etc.)
+### Status: COMPLETE
+- ✅ SVG export (Phase 1)
+- ✅ PDF export (Phase 2 - via @wire-dsl/core v0.1.1)
+- ✅ PNG export (Phase 2 - via @wire-dsl/core v0.1.1)
 
 ---
 
@@ -316,46 +304,37 @@ Document the new export feature and how it's structured for future expansion.
 
 ## 🔄 Future Phases
 
-### Phase 2: PDF Support (When Core Implements PDFExporter)
-
-```typescript
-// In @wire-dsl/core/exporters/pdf.ts
-export const PDFExporter = {
-  render: (ir: IR, layout: Layout, options: PDFOptions): Buffer => {
-    // Implementation
-  }
-};
-```
-
-Then in extension, simply add:
-
-```typescript
-// src/services/exportManager.ts
-static async exportPDF(ir: IR, layout: Layout, fileUri: vscode.Uri): Promise<void> {
-  const { PDFExporter } = require('@wire-dsl/core/exporters');
-  const buffer = PDFExporter.render(ir, layout, {
-    filename: path.basename(fileUri.fsPath)
-  });
-  await fs.promises.writeFile(fileUri.fsPath, buffer);
-}
-```
-
-And add to formats:
-
-```typescript
-{ id: 'pdf', label: 'PDF (Document)', ext: '.pdf' }
-```
-
-### Phase 3: PNG Support (When Core Implements PNGExporter)
-
-Same pattern as PDF.
-
-### Phase 4: Advanced Export Options
+### Phase 3: Advanced Export Options
 
 - Custom dimensions
 - Custom DPI/resolution
 - Margin settings
 - Include metadata
+
+---
+
+## 📊 Integration with @wire-dsl/core
+
+**Core Version:** `0.1.1` (or later)
+
+**Available Exporters:**
+```typescript
+// From @wire-dsl/core
+export function exportSVG(ir: IR, layout: Layout, options?: ExportOptions): string
+export function exportMultipagePDF(ir: IR, layout: Layout, options?: ExportOptions): Buffer
+export function exportPNG(ir: IR, layout: Layout, options?: ExportOptions): Buffer
+```
+
+**How it works in the Extension:**
+1. User clicks "Export" button
+2. Extension shows dialog with format options (SVG, PDF, PNG)
+3. User selects format and save location
+4. ExportManager calls appropriate Core function
+5. Core generates the file buffer/string
+6. Extension saves to disk
+
+**Theme Support:**
+All exporters support the `theme` option to respect Dark/Light mode preference.
 
 ---
 
@@ -368,13 +347,17 @@ Same pattern as PDF.
 - [x] Implement command handler in extension.ts
 - [x] Create ExportManager service
 - [x] Add export UI to webviewPanel HTML
-- [x] Implement export dialog and file saving
+- [x] Implement export dialog and file saving (SVG only initially)
 - [x] Add configuration contribution
 - [x] Create export icons
 - [x] Update ARCHITECTURE.md
 - [x] Manual testing and validation
 - [x] Code commit to feature branch
-- [ ] Merge to main (pending review)
+- [x] Update @wire-dsl/core to v0.1.1
+- [x] Implement PDF export via @wire-dsl/core exportMultipagePDF
+- [x] Implement PNG export via @wire-dsl/core exportPNG
+- [x] Update ExportManager to use Core exporters
+- [ ] Final merge to main (pending final review)
 
 ### File Changes Summary
 
@@ -420,18 +403,17 @@ Same pattern as PDF.
 
 ---
 
-**Last Updated:** January 28, 2026  
+**Last Updated:** January 28, 2026 (Phase 2 Complete)  
 **Next Steps:** 
 
-1. **Code Review:** Review PR in GitHub
-2. **Phase 2 Planning:** Create plan for PDF/PNG when Core has exporters
-3. **Core Coordination:** Coordinate with @wire-dsl/core team to implement:
-   - `PDFExporter` in `packages/core/src/exporters/pdf.ts`
-   - `PNGExporter` in `packages/core/src/exporters/png.ts`
+1. **Final Code Review:** Review all changes in PR
+2. **Manual Testing:** Test SVG, PDF, and PNG export
+3. **Merge to Main:** Complete the feature branch
+4. **Phase 3 Planning:** Plan advanced export options if needed
 
-**Phase 2 Implementation:** Once Core has exporters, extension changes are minimal:
-```typescript
-// Only need to uncomment in ExportManager and add to formats:
-{ id: 'pdf', label: 'PDF (Document)', ext: '.pdf' }
-{ id: 'png', label: 'PNG (Image)', ext: '.png' }
-```
+**Key Changes in Phase 2:**
+- Updated `@wire-dsl/core` from v0.0.1 to v0.1.1
+- Modified ExportManager to use Core exporters instead of custom implementation
+- Store IR and Layout in WirePreviewPanel for export
+- Support all three formats: SVG, PDF, PNG
+- Theme option passed to all exporters

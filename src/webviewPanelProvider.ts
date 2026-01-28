@@ -17,8 +17,9 @@ export class WirePreviewPanel {
   private lastContent: string = '';
   private availableScreens: string[] = [];
   private selectedScreen: string = '';
-
-  private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri) {
+  private lastIR: any = null; // Store IR for export
+  private lastLayout: any = null; // Store layout for export
+    private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri) {
     this.panel = panel;
     const config = vscode.workspace.getConfiguration('wire.preview');
     const themeSetting = config.get('defaultTheme') as string || 'default';
@@ -172,6 +173,9 @@ export class WirePreviewPanel {
       const ast = parseWireDSL(content);
       const ir = generateIR(ast);
       
+      // Store IR and layout for export
+      this.lastIR = ir;
+      
       // Extraer nombres de las screens del IR
       let screens: string[] = [];
       
@@ -191,6 +195,9 @@ export class WirePreviewPanel {
       }
       
       const layout = calculateLayout(ir);
+      // Store layout for export
+      this.lastLayout = layout;
+      
       let svg = renderToSVG(ir, layout, {
         width: 1300,
         height: 700,
@@ -583,7 +590,7 @@ ${message}
 
   /**
    * Export the current preview
-   * Shows export dialog and saves the SVG file
+   * Shows export dialog and saves the file (SVG, PDF, or PNG)
    */
   public async exportAs(): Promise<void> {
     try {
@@ -593,33 +600,24 @@ ${message}
         return;
       }
 
-      const fileName = activeEditor.document.fileName.split(/[\\/]/).pop() || 'export.wire';
-      const svg = this.lastContent ? this.extractSvgFromHtml(this.lastContent) : '';
-
-      if (!svg) {
+      if (!this.lastIR || !this.lastLayout) {
         vscode.window.showErrorMessage('No preview content available to export');
         return;
       }
 
-      await ExportManager.showExportDialog(fileName, svg);
+      const fileName = activeEditor.document.fileName.split(/[\\/]/).pop() || 'export.wire';
+
+      await ExportManager.showExportDialog(
+        fileName,
+        this.lastIR,
+        this.lastLayout,
+        this.currentTheme
+      );
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       vscode.window.showErrorMessage(`Export failed: ${errorMessage}`);
       console.error('Export error:', errorMessage);
     }
-  }
-
-  /**
-   * Extract SVG string from the webview's HTML content
-   * The lastContent contains the full HTML, but we need just the SVG element
-   */
-  private extractSvgFromHtml(htmlContent: string): string {
-    // Try to extract SVG from the HTML
-    const svgMatch = htmlContent.match(/<svg[^>]*>[\s\S]*?<\/svg>/);
-    if (svgMatch) {
-      return svgMatch[0];
-    }
-    return '';
   }
 
   public dispose() {

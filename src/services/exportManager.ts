@@ -15,31 +15,36 @@ export interface ExportFormat {
  * ExportManager
  * Handles file export for Wire DSL previews
  * 
- * Current Phase: SVG only
- * Future Phase: PDF and PNG (when Core implements exporters)
+ * Supported formats:
+ * - SVG: Vector graphics (via @wire-dsl/core exportSVG)
+ * - PDF: Document format (via @wire-dsl/core exportMultipagePDF)
+ * - PNG: Raster image (via @wire-dsl/core exportPNG)
  */
 export class ExportManager {
   /**
    * Get available export formats
-   * Currently only SVG is available
-   * PDF and PNG will be added when @wire-dsl/core implements PDFExporter and PNGExporter
+   * All formats are now available via @wire-dsl/core v0.1.1+
    */
   static getAvailableFormats(): ExportFormat[] {
     return [
       { id: 'svg', label: 'SVG (Vector)', ext: '.svg' },
-      // { id: 'pdf', label: 'PDF (Document)', ext: '.pdf' },  // Phase 2: When Core implements
-      // { id: 'png', label: 'PNG (Image)', ext: '.png' },    // Phase 2: When Core implements
+      { id: 'pdf', label: 'PDF (Document)', ext: '.pdf' },
+      { id: 'png', label: 'PNG (Image)', ext: '.png' },
     ];
   }
 
   /**
    * Show export dialog and save file
    * @param currentFileName The name of the .wire file being exported
-   * @param svg The SVG string to export
+   * @param ir The Intermediate Representation from @wire-dsl/core
+   * @param layout The calculated layout from @wire-dsl/core
+   * @param theme The current theme ('light' or 'dark')
    */
   static async showExportDialog(
     currentFileName: string,
-    svg: string
+    ir: any,
+    layout: any,
+    theme: 'light' | 'dark' = 'dark'
   ): Promise<void> {
     const availableFormats = this.getAvailableFormats();
 
@@ -100,7 +105,7 @@ export class ExportManager {
 
     // Save file based on format
     try {
-      await this.exportToFormat(selectedFormat, svg, fileUri);
+      await this.exportToFormat(selectedFormat, ir, layout, theme, fileUri);
 
       // Remember directory
       const directory = path.dirname(fileUri.fsPath);
@@ -126,71 +131,77 @@ export class ExportManager {
    */
   private static async exportToFormat(
     format: ExportFormat,
-    svg: string,
+    ir: any,
+    layout: any,
+    theme: 'light' | 'dark',
     fileUri: vscode.Uri
   ): Promise<void> {
     switch (format.id) {
       case 'svg':
-        await this.exportSVG(svg, fileUri);
+        await this.exportSVG(ir, layout, theme, fileUri);
         break;
-      // case 'pdf':
-      //   await this.exportPDF(svg, fileUri);
-      //   break;
-      // case 'png':
-      //   await this.exportPNG(svg, fileUri);
-      //   break;
+      case 'pdf':
+        await this.exportPDF(ir, layout, theme, fileUri);
+        break;
+      case 'png':
+        await this.exportPNG(ir, layout, theme, fileUri);
+        break;
       default:
         throw new Error(`Unsupported format: ${format.id}`);
     }
   }
 
   /**
-   * Export SVG to file
+   * Export SVG to file using @wire-dsl/core
    */
   private static async exportSVG(
-    svg: string,
+    ir: any,
+    layout: any,
+    theme: 'light' | 'dark',
     fileUri: vscode.Uri
   ): Promise<void> {
-    await fs.promises.writeFile(fileUri.fsPath, svg, 'utf8');
+    try {
+      const { exportSVG } = require('@wire-dsl/core');
+      const svg = exportSVG(ir, layout, { theme });
+      await fs.promises.writeFile(fileUri.fsPath, svg, 'utf8');
+    } catch (e) {
+      throw new Error(`SVG export failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
   }
 
   /**
-   * Export PDF to file
-   * @todo Implement when @wire-dsl/core has PDFExporter
+   * Export PDF to file using @wire-dsl/core
    */
-  // private static async exportPDF(
-  //   ir: any,
-  //   layout: any,
-  //   fileUri: vscode.Uri
-  // ): Promise<void> {
-  //   try {
-  //     const { PDFExporter } = require('@wire-dsl/core/exporters');
-  //     const buffer = PDFExporter.render(ir, layout, {
-  //       filename: path.basename(fileUri.fsPath)
-  //     });
-  //     await fs.promises.writeFile(fileUri.fsPath, buffer);
-  //   } catch (e) {
-  //     throw new Error(`PDF export not yet available in @wire-dsl/core`);
-  //   }
-  // }
+  private static async exportPDF(
+    ir: any,
+    layout: any,
+    theme: 'light' | 'dark',
+    fileUri: vscode.Uri
+  ): Promise<void> {
+    try {
+      const { exportMultipagePDF } = require('@wire-dsl/core');
+      const buffer = exportMultipagePDF(ir, layout, { theme });
+      await fs.promises.writeFile(fileUri.fsPath, buffer);
+    } catch (e) {
+      throw new Error(`PDF export failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
 
   /**
-   * Export PNG to file
-   * @todo Implement when @wire-dsl/core has PNGExporter
+   * Export PNG to file using @wire-dsl/core
    */
-  // private static async exportPNG(
-  //   ir: any,
-  //   layout: any,
-  //   fileUri: vscode.Uri
-  // ): Promise<void> {
-  //   try {
-  //     const { PNGExporter } = require('@wire-dsl/core/exporters');
-  //     const buffer = PNGExporter.render(ir, layout, {
-  //       filename: path.basename(fileUri.fsPath)
-  //     });
-  //     await fs.promises.writeFile(fileUri.fsPath, buffer);
-  //   } catch (e) {
-  //     throw new Error(`PNG export not yet available in @wire-dsl/core`);
-  //   }
-  // }
+  private static async exportPNG(
+    ir: any,
+    layout: any,
+    theme: 'light' | 'dark',
+    fileUri: vscode.Uri
+  ): Promise<void> {
+    try {
+      const { exportPNG } = require('@wire-dsl/core');
+      const buffer = exportPNG(ir, layout, { theme });
+      await fs.promises.writeFile(fileUri.fsPath, buffer);
+    } catch (e) {
+      throw new Error(`PNG export failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
 }
