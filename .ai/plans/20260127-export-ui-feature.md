@@ -363,13 +363,12 @@ All exporters support the `theme` option to respect Dark/Light mode preference.
 
 | File | Change | Status |
 |------|--------|--------|
-| `package.json` | Add command + config | ✅ Complete |
-| `src/extension.ts` | Register command | ✅ Complete |
-| `src/webviewPanelProvider.ts` | Add export UI | ✅ Complete |
-| `src/services/exportManager.ts` | New file | ✅ Complete |
-| `icons/export-light.svg` | New icon | ✅ Complete |
-| `icons/export-dark.svg` | New icon | ✅ Complete |
-| `ARCHITECTURE.md` | Document export feature | ✅ Complete |
+| `package.json` | Update core to v0.1.1 + add export config | ✅ Complete |
+| `src/extension.ts` | Register export command | ✅ Complete |
+| `src/webviewPanelProvider.ts` | Add export UI + store IR/layout | ✅ Complete |
+| `src/services/exportManager.ts` | Export handlers using Core functions | ✅ Complete |
+| `icons/export-*.svg` | Export button icons | ✅ Complete |
+| `ARCHITECTURE.md` | Document export feature and Core integration | ✅ Complete |
 
 ---
 
