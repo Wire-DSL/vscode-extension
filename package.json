@@ -63,12 +63,26 @@
           "light": "./icons/preview-light.svg",
           "dark": "./icons/preview-dark.svg"
         }
+      },
+      {
+        "command": "wire.exportAs",
+        "title": "Export As",
+        "category": "Wire",
+        "icon": {
+          "light": "./icons/export-light.svg",
+          "dark": "./icons/export-dark.svg"
+        }
       }
     ],
     "menus": {
       "editor/title": [
         {
           "command": "wire.openPreview",
+          "when": "resourceLangId == wire",
+          "group": "navigation"
+        },
+        {
+          "command": "wire.exportAs",
           "when": "resourceLangId == wire",
           "group": "navigation"
         }
@@ -80,6 +94,12 @@
         "key": "ctrl+shift+v",
         "mac": "cmd+shift+v",
         "when": "resourceLangId == wire"
+      },
+      {
+        "command": "wire.exportAs",
+        "key": "ctrl+shift+s",
+        "mac": "cmd+shift+s",
+        "when": "resourceLangId == wire"
       }
     ],
     "configuration": {
@@ -90,6 +110,11 @@
           "enum": ["default", "dark", "light"],
           "default": "default",
           "description": "Default theme for Wire DSL preview render ('default' uses your editor theme)"
+        },
+        "wire.export.lastDirectory": {
+          "type": "string",
+          "description": "Last directory used for exporting files",
+          "scope": "machine"
         }
       }
     }

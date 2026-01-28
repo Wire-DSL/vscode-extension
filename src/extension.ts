@@ -57,6 +57,23 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(previewCommand);
   console.log('✓ Preview command registered: wire.openPreview');
   console.log('=== PREVIEW PANEL REGISTRATION END ===\n');
+
+  // Register Export Command
+  console.log('\n=== EXPORT COMMAND REGISTRATION START ===');
+  const exportCommand = vscode.commands.registerCommand(
+    'wire.exportAs',
+    async () => {
+      console.log('✓ Wire export command triggered');
+      if (!WirePreviewPanel.currentPanel) {
+        vscode.window.showErrorMessage('No preview panel open. Open preview first with Ctrl+Shift+V');
+        return;
+      }
+      await WirePreviewPanel.currentPanel.exportAs();
+    }
+  );
+  context.subscriptions.push(exportCommand);
+  console.log('✓ Export command registered: wire.exportAs');
+  console.log('=== EXPORT COMMAND REGISTRATION END ===\n');
 }
 
 export function deactivate() {

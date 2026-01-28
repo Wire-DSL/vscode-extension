@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { ExportManager } from './services/exportManager';
 
 /**
  * Wire DSL Preview Panel
@@ -44,6 +45,9 @@ export class WirePreviewPanel {
           if (this.lastContent) {
             this.updatePreview(this.lastContent);
           }
+        } else if (message.command === 'export') {
+          // Handle export request
+          this.handleExportMessage(message);
         }
       },
       null,
@@ -326,7 +330,9 @@ export class WirePreviewPanel {
     <div class="separator"></div>
     <div class="zoom-display"><span id="zoomLevel">100</span>%</div>
     <div class="separator"></div>
-    <button id="toggleTheme" title="Toggle Dark/Light Mode">🌙</button>
+    <button id="exportBtn" title="Export Preview (Ctrl+Shift+S)">Export</button>
+    <div class="separator"></div>
+    <button id="toggleTheme" title="Toggle Dark/Light Mode">Theme</button>
   </div>
   <div id="preview">
     ${svg}
@@ -334,6 +340,7 @@ export class WirePreviewPanel {
 
   <script>
     const vscode = acquireVsCodeApi();
+    const INITIAL_THEME = '${this.currentTheme}'; // Passed from extension
     
     const svg = document.querySelector('#preview svg');
     const preview = document.getElementById('preview');
@@ -351,7 +358,8 @@ export class WirePreviewPanel {
     // Restaurar estado previo
     const previousState = vscode.getState() || {};
     let currentZoom = previousState.zoomLevel || 1;
-    let isDarkMode = previousState.isDarkMode !== undefined ? previousState.isDarkMode : true;
+    // Use INITIAL_THEME from extension, fallback to previousState, then default to dark
+    let isDarkMode = INITIAL_THEME === 'dark' ? true : (INITIAL_THEME === 'light' ? false : (previousState.isDarkMode !== undefined ? previousState.isDarkMode : true));
     
     // Calcular zoom para que quepa en pantalla
     function calculateFitZoom() {
@@ -399,10 +407,10 @@ export class WirePreviewPanel {
       const newTheme = isDarkMode ? 'dark' : 'light';
       
       if (isDarkMode) {
-        toggleThemeBtn.textContent = '🌙';
+        toggleThemeBtn.textContent = 'Dark';
         toggleThemeBtn.title = 'Switch to Light Mode';
       } else {
-        toggleThemeBtn.textContent = '☀️';
+        toggleThemeBtn.textContent = 'Light';
         toggleThemeBtn.title = 'Switch to Dark Mode';
       }
       
@@ -435,6 +443,22 @@ export class WirePreviewPanel {
 
     toggleThemeBtn.addEventListener('click', toggleTheme);
 
+    // Export button
+    const exportBtn = document.getElementById('exportBtn');
+    if (exportBtn) {
+      exportBtn.addEventListener('click', () => {
+        const svgElement = document.querySelector('#preview svg');
+        if (svgElement) {
+          vscode.postMessage({
+            command: 'export',
+            svg: svgElement.outerHTML
+          });
+        } else {
+          console.error('No SVG found to export');
+        }
+      });
+    }
+
     // Screen selector
     if (screenSelector) {
       screenSelector.addEventListener('change', (e) => {
@@ -455,9 +479,10 @@ export class WirePreviewPanel {
       }
     });
 
-    // Aplicar tema guardado
+    // Aplicar tema guardado (actualizar botón si es light mode)
     if (!isDarkMode) {
-      toggleTheme();
+      toggleThemeBtn.textContent = 'Light';
+      toggleThemeBtn.title = 'Switch to Dark Mode';
     }
 
     updateZoom();
@@ -527,6 +552,74 @@ ${message}
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#039;');
+  }
+
+  /**
+   * Handle export message from webview
+   */
+  private async handleExportMessage(message: any): Promise<void> {
+    try {
+      const activeEditor = vscode.window.activeTextEditor;
+      if (!activeEditor) {
+        vscode.window.showErrorMessage('No active editor found');
+        return;
+      }
+
+      const fileName = activeEditor.document.fileName.split(/[\\/]/).pop() || 'export.wire';
+      const svg = message.svg || '';
+
+      if (!svg) {
+        vscode.window.showErrorMessage('No preview content available to export');
+        return;
+      }
+
+      await ExportManager.showExportDialog(fileName, svg);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      vscode.window.showErrorMessage(`Export failed: ${errorMessage}`);
+      console.error('Export error:', errorMessage);
+    }
+  }
+
+  /**
+   * Export the current preview
+   * Shows export dialog and saves the SVG file
+   */
+  public async exportAs(): Promise<void> {
+    try {
+      const activeEditor = vscode.window.activeTextEditor;
+      if (!activeEditor) {
+        vscode.window.showErrorMessage('No active editor found');
+        return;
+      }
+
+      const fileName = activeEditor.document.fileName.split(/[\\/]/).pop() || 'export.wire';
+      const svg = this.lastContent ? this.extractSvgFromHtml(this.lastContent) : '';
+
+      if (!svg) {
+        vscode.window.showErrorMessage('No preview content available to export');
+        return;
+      }
+
+      await ExportManager.showExportDialog(fileName, svg);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      vscode.window.showErrorMessage(`Export failed: ${errorMessage}`);
+      console.error('Export error:', errorMessage);
+    }
+  }
+
+  /**
+   * Extract SVG string from the webview's HTML content
+   * The lastContent contains the full HTML, but we need just the SVG element
+   */
+  private extractSvgFromHtml(htmlContent: string): string {
+    // Try to extract SVG from the HTML
+    const svgMatch = htmlContent.match(/<svg[^>]*>[\s\S]*?<\/svg>/);
+    if (svgMatch) {
+      return svgMatch[0];
+    }
+    return '';
   }
 
   public dispose() {

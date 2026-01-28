@@ -17,7 +17,8 @@ For directory layout, see [README.md](README.md#project-structure).
 | `src/hoverProvider.ts` | Hover documentation for components, properties, and keywords |
 | `src/definitionProvider.ts` | Go-to-definition navigation (Ctrl+Click) |
 | `src/referenceProvider.ts` | Find references (Ctrl+Shift+H) - finds all usages |
-| `src/webviewPanelProvider.ts` | Live SVG preview panel with zoom and theme support |
+| `src/webviewPanelProvider.ts` | Live SVG preview panel with zoom, theme support, and export |
+| `src/services/exportManager.ts` | File export logic (SVG, and future PDF/PNG support) |
 | `src/data/components.ts` | Component definitions (names, properties, types) |
 | `src/data/documentation.ts` | Full documentation for all components and properties |
 | `src/utils/documentParser.ts` | DSL parsing and analysis utilities |
@@ -238,7 +239,7 @@ class WireReferenceProvider implements vscode.ReferenceProvider {
 - Shows all usages throughout the file
 - Integration with VS Code Reference panel
 
-### 9. **webviewPanelProvider.ts** (SVG Preview Panel)
+### 9. **webviewPanelProvider.ts** (SVG Preview Panel & Export)
 
 Implements live SVG preview as a WebviewPanel (like Markdown preview):
 
@@ -248,7 +249,13 @@ class WirePreviewPanel {
     // Create WebviewPanel
     // Parse .wire file
     // Render SVG
-    // Handle zoom and theme changes
+    // Handle zoom, theme, and export changes
+  }
+  
+  async exportAs(): Promise<void> {
+    // Export current preview
+    // Show export dialog
+    // Save file
   }
 }
 ```
@@ -260,6 +267,57 @@ class WirePreviewPanel {
 - Auto-refresh on file save
 - Keyboard shortcuts (Ctrl+Shift+V to open)
 - Configuration settings for default theme
+- **Export button** - Save preview as SVG (Ctrl+Shift+S)
+- Multi-screen support with dropdown selector
+
+### 10. **services/exportManager.ts** (File Export Service)
+
+Handles exporting preview to different file formats:
+
+```typescript
+class ExportManager {
+  static getAvailableFormats(): ExportFormat[] {
+    // Returns array of export format options
+    // Currently: SVG only
+    // Future: PDF, PNG (when Core implements exporters)
+  }
+  
+  static async showExportDialog(
+    currentFileName: string,
+    svg: string
+  ): Promise<void> {
+    // Show format selection
+    // Show file save dialog
+    // Export file
+    // Remember last directory
+  }
+}
+```
+
+**Features:**
+- Multiple format support (extensible design)
+- SVG export implemented
+- PDF/PNG export ready when Core has exporters
+- Remembers last save directory
+- User-friendly format selection
+- Error handling and notifications
+
+**Export Flow:**
+```
+User clicks "Export" button
+  ↓
+ExportManager.showExportDialog()
+  ↓
+Format selection (QuickPick)
+  ↓
+File save dialog (vscode.showSaveDialog)
+  ↓
+Export to selected format
+  ↓
+Save directory in settings
+  ↓
+Success/Error notification
+```
 
 ## Data Flow
 
