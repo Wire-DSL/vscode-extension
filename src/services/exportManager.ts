@@ -104,9 +104,14 @@ export class ExportManager {
       return; // User cancelled
     }
 
+    // Show progress in status bar while exporting
+    const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right);
+    statusBar.text = `$(loading~spin) Exporting as ${selectedFormat.id.toUpperCase()}...`;
+    statusBar.show();
+
     // Save file based on format
     try {
-      await this.exportToFormat(selectedFormat, ir, layout, theme, fileUri);
+      await this.exportToFormat(selectedFormat, ir, layout, theme, fileUri.fsPath);
 
       // Remember directory
       const directory = path.dirname(fileUri.fsPath);
@@ -116,11 +121,13 @@ export class ExportManager {
         vscode.ConfigurationTarget.Global
       );
 
+      statusBar.dispose();
       vscode.window.showInformationMessage(
         `✓ Exported to ${path.basename(fileUri.fsPath)}`
       );
       console.log(`✓ File exported: ${fileUri.fsPath}`);
     } catch (error) {
+      statusBar.dispose();
       const errorMessage = error instanceof Error ? error.message : String(error);
       vscode.window.showErrorMessage(`Export failed: ${errorMessage}`);
       console.error('Export error:', errorMessage);
@@ -135,17 +142,17 @@ export class ExportManager {
     ir: any,
     layout: any,
     theme: 'light' | 'dark',
-    fileUri: vscode.Uri
+    filePath: string
   ): Promise<void> {
     switch (format.id) {
       case 'svg':
-        await this.exportSVG(ir, layout, theme, fileUri);
+        await this.exportSVG(ir, layout, theme, filePath);
         break;
       case 'pdf':
-        await this.exportPDF(ir, layout, theme, fileUri);
+        await this.exportPDF(ir, layout, theme, filePath);
         break;
       case 'png':
-        await this.exportPNG(ir, layout, theme, fileUri);
+        await this.exportPNG(ir, layout, theme, filePath);
         break;
       default:
         throw new Error(`Unsupported format: ${format.id}`);
@@ -159,12 +166,12 @@ export class ExportManager {
     ir: any,
     layout: any,
     theme: 'light' | 'dark',
-    fileUri: vscode.Uri
+    filePath: string
   ): Promise<void> {
     try {
       const { exportSVG } = require('@wire-dsl/core');
       const svg = await exportSVG(ir, layout, { theme });
-      await fs.promises.writeFile(fileUri.fsPath, svg, 'utf8');
+      await fs.promises.writeFile(filePath, svg, 'utf8');
     } catch (e) {
       throw new Error(`SVG export failed: ${e instanceof Error ? e.message : String(e)}`);
     }
@@ -177,12 +184,12 @@ export class ExportManager {
     ir: any,
     layout: any,
     theme: 'light' | 'dark',
-    fileUri: vscode.Uri
+    filePath: string
   ): Promise<void> {
     try {
       const { exportMultipagePDF } = require('@wire-dsl/core');
-      const buffer = await exportMultipagePDF(ir, layout, { theme });
-      await fs.promises.writeFile(fileUri.fsPath, buffer);
+      const buffer = await exportMultipagePDF(ir, layout, filePath, { theme });
+      await fs.promises.writeFile(filePath, buffer);
     } catch (e) {
       throw new Error(`PDF export failed: ${e instanceof Error ? e.message : String(e)}`);
     }
@@ -195,12 +202,12 @@ export class ExportManager {
     ir: any,
     layout: any,
     theme: 'light' | 'dark',
-    fileUri: vscode.Uri
+    filePath: string
   ): Promise<void> {
     try {
       const { exportPNG } = require('@wire-dsl/core');
-      const buffer = await exportPNG(ir, layout, { theme });
-      await fs.promises.writeFile(fileUri.fsPath, buffer);
+      const buffer = await exportPNG(ir, layout, filePath, { theme });
+      await fs.promises.writeFile(filePath, buffer);
     } catch (e) {
       throw new Error(`PNG export failed: ${e instanceof Error ? e.message : String(e)}`);
     }
