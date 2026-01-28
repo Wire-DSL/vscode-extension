@@ -1,8 +1,9 @@
 # Feature Plan: Export UI Implementation (SVG/PDF Support)
 
 **Created:** January 27, 2026  
-**Status:** Planning  
-**Branch:** `feature/export-ui` (to be created)  
+**Updated:** January 28, 2026  
+**Status:** Phase 1 Complete (SVG Export)  
+**Branch:** `feature/export-ui`  
 **Epic:** Add file export capabilities to VS Code Extension
 
 ---
@@ -362,30 +363,30 @@ Same pattern as PDF.
 
 ### Implementation Tasks
 
-- [ ] Create `feature/export-ui` branch
-- [ ] Add `wire.exportAs` command to package.json
-- [ ] Implement command handler in extension.ts
-- [ ] Create ExportManager service
-- [ ] Add export UI to webviewPanel HTML
-- [ ] Implement export dialog and file saving
-- [ ] Add configuration contribution
-- [ ] Create export icons
-- [ ] Update ARCHITECTURE.md
-- [ ] Manual testing
-- [ ] Code review
-- [ ] Merge to main
+- [x] Create `feature/export-ui` branch
+- [x] Add `wire.exportAs` command to package.json
+- [x] Implement command handler in extension.ts
+- [x] Create ExportManager service
+- [x] Add export UI to webviewPanel HTML
+- [x] Implement export dialog and file saving
+- [x] Add configuration contribution
+- [x] Create export icons
+- [x] Update ARCHITECTURE.md
+- [x] Manual testing and validation
+- [x] Code commit to feature branch
+- [ ] Merge to main (pending review)
 
 ### File Changes Summary
 
 | File | Change | Status |
 |------|--------|--------|
-| `package.json` | Add command + config | Not Started |
-| `src/extension.ts` | Register command | Not Started |
-| `src/webviewPanelProvider.ts` | Add export UI | Not Started |
-| `src/services/exportManager.ts` | New file | Not Started |
-| `icons/export-light.svg` | New icon | Not Started |
-| `icons/export-dark.svg` | New icon | Not Started |
-| `ARCHITECTURE.md` | Document export feature | Not Started |
+| `package.json` | Add command + config | ✅ Complete |
+| `src/extension.ts` | Register command | ✅ Complete |
+| `src/webviewPanelProvider.ts` | Add export UI | ✅ Complete |
+| `src/services/exportManager.ts` | New file | ✅ Complete |
+| `icons/export-light.svg` | New icon | ✅ Complete |
+| `icons/export-dark.svg` | New icon | ✅ Complete |
+| `ARCHITECTURE.md` | Document export feature | ✅ Complete |
 
 ---
 
@@ -419,5 +420,18 @@ Same pattern as PDF.
 
 ---
 
-**Last Updated:** January 27, 2026  
-**Next Review:** When ready to start implementation
+**Last Updated:** January 28, 2026  
+**Next Steps:** 
+
+1. **Code Review:** Review PR in GitHub
+2. **Phase 2 Planning:** Create plan for PDF/PNG when Core has exporters
+3. **Core Coordination:** Coordinate with @wire-dsl/core team to implement:
+   - `PDFExporter` in `packages/core/src/exporters/pdf.ts`
+   - `PNGExporter` in `packages/core/src/exporters/png.ts`
+
+**Phase 2 Implementation:** Once Core has exporters, extension changes are minimal:
+```typescript
+// Only need to uncomment in ExportManager and add to formats:
+{ id: 'pdf', label: 'PDF (Document)', ext: '.pdf' }
+{ id: 'png', label: 'PNG (Image)', ext: '.png' }
+```
