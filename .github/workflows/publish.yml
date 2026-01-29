@@ -47,8 +47,6 @@ jobs:
             target: linux-x64
           - os: macos-14
             target: darwin-arm64
-          - os: macos-13
-            target: darwin-x64
 
     runs-on: ${{ matrix.os }}
 
@@ -72,4 +70,4 @@ jobs:
       - name: Publish to VS Marketplace
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
-        run: npx vsce publish --packagePath wire-dsl-${{ matrix.target }}.vsix --pat "$VSCE_PAT"
+        run: npx vsce publish --packagePath wire-dsl-${{ matrix.target }}.vsix
