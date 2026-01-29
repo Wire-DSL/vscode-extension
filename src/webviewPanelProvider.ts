@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { ExportManager } from './services/exportManager';
 
 /**
  * Wire DSL Preview Panel
@@ -16,8 +17,10 @@ export class WirePreviewPanel {
   private lastContent: string = '';
   private availableScreens: string[] = [];
   private selectedScreen: string = '';
-
-  private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri) {
+  private lastIR: any = null; // Store IR for export
+  private lastLayout: any = null; // Store layout for export
+  private currentFilePath: string = ''; // Store current file path
+    private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri) {
     this.panel = panel;
     const config = vscode.workspace.getConfiguration('wire.preview');
     const themeSetting = config.get('defaultTheme') as string || 'default';
@@ -44,6 +47,9 @@ export class WirePreviewPanel {
           if (this.lastContent) {
             this.updatePreview(this.lastContent);
           }
+        } else if (message.command === 'export') {
+          // Handle export request
+          this.handleExportMessage(message);
         }
       },
       null,
@@ -145,6 +151,13 @@ export class WirePreviewPanel {
   private updatePreview(content: string) {
     console.log('Updating preview...');
     this.lastContent = content; // Guardar el contenido para cambios de tema
+    
+    // Save current file path
+    const activeEditor = vscode.window.activeTextEditor;
+    if (activeEditor && activeEditor.document.languageId === 'wire') {
+      this.currentFilePath = activeEditor.document.fileName;
+    }
+    
     try {
       // Load core module once and cache it
       if (!WirePreviewPanel.coreModule) {
@@ -168,6 +181,9 @@ export class WirePreviewPanel {
       const ast = parseWireDSL(content);
       const ir = generateIR(ast);
       
+      // Store IR and layout for export
+      this.lastIR = ir;
+      
       // Extraer nombres de las screens del IR
       let screens: string[] = [];
       
@@ -187,6 +203,9 @@ export class WirePreviewPanel {
       }
       
       const layout = calculateLayout(ir);
+      // Store layout for export
+      this.lastLayout = layout;
+      
       let svg = renderToSVG(ir, layout, {
         width: 1300,
         height: 700,
@@ -326,7 +345,9 @@ export class WirePreviewPanel {
     <div class="separator"></div>
     <div class="zoom-display"><span id="zoomLevel">100</span>%</div>
     <div class="separator"></div>
-    <button id="toggleTheme" title="Toggle Dark/Light Mode">🌙</button>
+    <button id="exportBtn" title="Export Screen">Export Screen</button>
+    <div class="separator"></div>
+    <button id="toggleTheme" title="Toggle Dark/Light Mode">Theme</button>
   </div>
   <div id="preview">
     ${svg}
@@ -334,6 +355,7 @@ export class WirePreviewPanel {
 
   <script>
     const vscode = acquireVsCodeApi();
+    const INITIAL_THEME = '${this.currentTheme}'; // Passed from extension
     
     const svg = document.querySelector('#preview svg');
     const preview = document.getElementById('preview');
@@ -351,7 +373,8 @@ export class WirePreviewPanel {
     // Restaurar estado previo
     const previousState = vscode.getState() || {};
     let currentZoom = previousState.zoomLevel || 1;
-    let isDarkMode = previousState.isDarkMode !== undefined ? previousState.isDarkMode : true;
+    // Use INITIAL_THEME from extension, fallback to previousState, then default to dark
+    let isDarkMode = INITIAL_THEME === 'dark' ? true : (INITIAL_THEME === 'light' ? false : (previousState.isDarkMode !== undefined ? previousState.isDarkMode : true));
     
     // Calcular zoom para que quepa en pantalla
     function calculateFitZoom() {
@@ -399,10 +422,10 @@ export class WirePreviewPanel {
       const newTheme = isDarkMode ? 'dark' : 'light';
       
       if (isDarkMode) {
-        toggleThemeBtn.textContent = '🌙';
+        toggleThemeBtn.textContent = 'Dark';
         toggleThemeBtn.title = 'Switch to Light Mode';
       } else {
-        toggleThemeBtn.textContent = '☀️';
+        toggleThemeBtn.textContent = 'Light';
         toggleThemeBtn.title = 'Switch to Dark Mode';
       }
       
@@ -435,6 +458,22 @@ export class WirePreviewPanel {
 
     toggleThemeBtn.addEventListener('click', toggleTheme);
 
+    // Export button
+    const exportBtn = document.getElementById('exportBtn');
+    if (exportBtn) {
+      exportBtn.addEventListener('click', () => {
+        const svgElement = document.querySelector('#preview svg');
+        if (svgElement) {
+          vscode.postMessage({
+            command: 'export',
+            svg: svgElement.outerHTML
+          });
+        } else {
+          console.error('No SVG found to export');
+        }
+      });
+    }
+
     // Screen selector
     if (screenSelector) {
       screenSelector.addEventListener('change', (e) => {
@@ -455,9 +494,10 @@ export class WirePreviewPanel {
       }
     });
 
-    // Aplicar tema guardado
+    // Aplicar tema guardado (actualizar botón si es light mode)
     if (!isDarkMode) {
-      toggleTheme();
+      toggleThemeBtn.textContent = 'Light';
+      toggleThemeBtn.title = 'Switch to Dark Mode';
     }
 
     updateZoom();
@@ -527,6 +567,63 @@ ${message}
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#039;');
+  }
+
+  /**
+   * Handle export message from webview
+   */
+  private async handleExportMessage(message: any): Promise<void> {
+    // Delegate to the exportAs method which handles everything correctly
+    await this.exportAs();
+  }
+
+  /**
+   * Export the current preview
+   * Exports only the currently selected screen as a single file
+   */
+  public async exportAs(): Promise<void> {
+    try {
+      if (!this.lastIR || !this.lastLayout) {
+        vscode.window.showErrorMessage('No preview content available to export');
+        return;
+      }
+
+      // Get filename from current file or use default
+      let fileName = 'export.wire';
+      if (this.currentFilePath) {
+        fileName = this.currentFilePath.split(/[\\/]/).pop() || 'export.wire';
+      }
+
+      // Create a filtered IR with only the selected screen
+      const screenToExport = this.lastIR.project.screens.find(
+        (s: any) => s.name === this.selectedScreen
+      );
+
+      if (!screenToExport) {
+        vscode.window.showErrorMessage('Selected screen not found');
+        return;
+      }
+
+      // Create filtered IR with only the selected screen
+      const filteredIR = {
+        ...this.lastIR,
+        project: {
+          ...this.lastIR.project,
+          screens: [screenToExport],
+        },
+      };
+
+      await ExportManager.showExportDialog(
+        fileName,
+        filteredIR,
+        this.lastLayout,
+        this.currentTheme
+      );
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      vscode.window.showErrorMessage(`Export failed: ${errorMessage}`);
+      console.error('Export error:', errorMessage);
+    }
   }
 
   public dispose() {
