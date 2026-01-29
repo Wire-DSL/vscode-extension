@@ -107,7 +107,11 @@
       "properties": {
         "wire.preview.defaultTheme": {
           "type": "string",
-          "enum": ["default", "dark", "light"],
+          "enum": [
+            "default",
+            "dark",
+            "light"
+          ],
           "default": "default",
           "description": "Default theme for Wire DSL preview render ('default' uses your editor theme)"
         },
@@ -127,7 +131,9 @@
     "pretest": "npm run esbuild",
     "test": "vitest",
     "package": "npm run vscode:prepublish && npx vsce package --out wire-dsl-extension.vsix && code --install-extension wire-dsl-extension.vsix --force",
-    "package-only": "npm run vscode:prepublish && npx vsce package --out wire-dsl-extension.vsix"
+    "package-only": "npm run vscode:prepublish && npx vsce package --out wire-dsl-extension.vsix",
+    "changeset": "changeset",
+    "version-packages": "changeset version"
   },
   "dependencies": {
     "@wire-dsl/core": "^0.1.5",
@@ -136,6 +142,7 @@
     "svg-to-pdfkit": "0.1.8"
   },
   "devDependencies": {
+    "@changesets/cli": "2.29.8",
     "@types/node": "25.1.0",
     "@types/vscode": "1.108.1",
     "@vscode/vsce": "3.7.1",

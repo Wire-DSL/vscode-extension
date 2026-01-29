@@ -3,9 +3,22 @@
 .gitignore
 .gitattributes
 
-# Development (but keep @wire-dsl/core)
-node_modules/
-!node_modules/@wire-dsl/
+# Development
+# node_modules/
+# !node_modules/@wire-dsl/
+
+# # externals (runtime)
+# !node_modules/pdfkit/**
+# !node_modules/fontkit/**
+# !node_modules/sharp/**
+
+# # sharp native payload
+# !node_modules/@img/**
+# !node_modules/detect-libc/**
+
+node_modules/.cache/
+node_modules/**/.DS_Store
+
 package-lock.json
 .npmrc
 

@@ -1,0 +1,75 @@
+name: Publish (VS Marketplace)
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  detect-version-bump:
+    runs-on: ubuntu-latest
+    outputs:
+      should_publish: ${{ steps.bump.outputs.should_publish }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - id: bump
+        name: Detect version bump in package.json
+        run: |
+          node -e "
+            const { execSync } = require('node:child_process');
+            function pkg(ref){ return JSON.parse(execSync('git show '+ref+':package.json',{encoding:'utf8'})).version; }
+            const prev = pkg('HEAD~1');
+            const curr = pkg('HEAD');
+            const should = prev !== curr;
+            console.log('prev', prev, 'curr', curr, 'publish', should);
+            require('node:fs').appendFileSync(process.env.GITHUB_OUTPUT, 'should_publish=' + (should?'true':'false') + '\n');
+          "
+
+  publish:
+    needs: detect-version-bump
+    if: needs.detect-version-bump.outputs.should_publish == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: win32-x64
+          - os: ubuntu-latest
+            target: linux-x64
+          - os: macos-14
+            target: darwin-arm64
+          - os: macos-13
+            target: darwin-x64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Build (prepublish)
+        run: npm run vscode:prepublish
+
+      - name: Package VSIX (${{ matrix.target }})
+        run: npx vsce package --target ${{ matrix.target }} --out wire-dsl-${{ matrix.target }}.vsix
+
+      - name: Publish to VS Marketplace
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: npx vsce publish --packagePath wire-dsl-${{ matrix.target }}.vsix --pat "$VSCE_PAT"
