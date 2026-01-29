@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.2
+
+### Patch Changes
+
+- 22c489c: remove macOS 13 target and update publish command in GitHub Actions workflow
+
 ## 0.4.1
 
 ### Patch Changes
