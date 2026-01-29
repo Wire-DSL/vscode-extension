@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.3
+
+### Patch Changes
+
+- e3d0caf: add marketplace logo
+
 ## 0.4.2
 
 ### Patch Changes
