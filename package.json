@@ -5,6 +5,7 @@
   "version": "0.4.2",
   "publisher": "wire-dsl",
   "license": "MIT",
+  "icon": "./icons/wire-logo.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/Wire-DSL/vscode-extension.git"
