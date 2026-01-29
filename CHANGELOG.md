@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.1
+
+### Patch Changes
+
+- 8ef996b: add GitHub Actions workflows for CI, publishing, and release management
+
 All notable changes to the Wire DSL extension will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
@@ -8,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.4.0] - 2026-01-29
 
 ### Added
+
 - Complete export feature supporting SVG, PDF, and PNG formats
 - ExportManager service with extensible export handling
 - Multi-screen export support:
@@ -24,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2026-01-22
 
 ### Added
+
 - Initial release
 - Syntax highlighting for Wire DSL `.wire` files
 - Support for keywords: `project`, `screen`, `stack`, `grid`, `panel`, `split`, `form`, `table`
@@ -36,6 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Language configuration with indentation rules
 
 ### Planned
+
 - Code autocompletion with context awareness
 - Hover tooltips with component documentation
 - Live SVG preview for `.wire` files
