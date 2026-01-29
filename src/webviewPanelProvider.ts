@@ -19,6 +19,7 @@ export class WirePreviewPanel {
   private selectedScreen: string = '';
   private lastIR: any = null; // Store IR for export
   private lastLayout: any = null; // Store layout for export
+  private currentFilePath: string = ''; // Store current file path
     private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri) {
     this.panel = panel;
     const config = vscode.workspace.getConfiguration('wire.preview');
@@ -150,6 +151,13 @@ export class WirePreviewPanel {
   private updatePreview(content: string) {
     console.log('Updating preview...');
     this.lastContent = content; // Guardar el contenido para cambios de tema
+    
+    // Save current file path
+    const activeEditor = vscode.window.activeTextEditor;
+    if (activeEditor && activeEditor.document.languageId === 'wire') {
+      this.currentFilePath = activeEditor.document.fileName;
+    }
+    
     try {
       // Load core module once and cache it
       if (!WirePreviewPanel.coreModule) {
@@ -337,7 +345,7 @@ export class WirePreviewPanel {
     <div class="separator"></div>
     <div class="zoom-display"><span id="zoomLevel">100</span>%</div>
     <div class="separator"></div>
-    <button id="exportBtn" title="Export Preview (Ctrl+Shift+S)">Export</button>
+    <button id="exportBtn" title="Export Screen">Export Screen</button>
     <div class="separator"></div>
     <button id="toggleTheme" title="Toggle Dark/Light Mode">Theme</button>
   </div>
@@ -565,51 +573,49 @@ ${message}
    * Handle export message from webview
    */
   private async handleExportMessage(message: any): Promise<void> {
-    try {
-      const activeEditor = vscode.window.activeTextEditor;
-      if (!activeEditor) {
-        vscode.window.showErrorMessage('No active editor found');
-        return;
-      }
-
-      const fileName = activeEditor.document.fileName.split(/[\\/]/).pop() || 'export.wire';
-      const svg = message.svg || '';
-
-      if (!svg) {
-        vscode.window.showErrorMessage('No preview content available to export');
-        return;
-      }
-
-      await ExportManager.showExportDialog(fileName, svg);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      vscode.window.showErrorMessage(`Export failed: ${errorMessage}`);
-      console.error('Export error:', errorMessage);
-    }
+    // Delegate to the exportAs method which handles everything correctly
+    await this.exportAs();
   }
 
   /**
    * Export the current preview
-   * Shows export dialog and saves the file (SVG, PDF, or PNG)
+   * Exports only the currently selected screen as a single file
    */
   public async exportAs(): Promise<void> {
     try {
-      const activeEditor = vscode.window.activeTextEditor;
-      if (!activeEditor) {
-        vscode.window.showErrorMessage('No active editor found');
-        return;
-      }
-
       if (!this.lastIR || !this.lastLayout) {
         vscode.window.showErrorMessage('No preview content available to export');
         return;
       }
 
-      const fileName = activeEditor.document.fileName.split(/[\\/]/).pop() || 'export.wire';
+      // Get filename from current file or use default
+      let fileName = 'export.wire';
+      if (this.currentFilePath) {
+        fileName = this.currentFilePath.split(/[\\/]/).pop() || 'export.wire';
+      }
+
+      // Create a filtered IR with only the selected screen
+      const screenToExport = this.lastIR.project.screens.find(
+        (s: any) => s.name === this.selectedScreen
+      );
+
+      if (!screenToExport) {
+        vscode.window.showErrorMessage('Selected screen not found');
+        return;
+      }
+
+      // Create filtered IR with only the selected screen
+      const filteredIR = {
+        ...this.lastIR,
+        project: {
+          ...this.lastIR.project,
+          screens: [screenToExport],
+        },
+      };
 
       await ExportManager.showExportDialog(
         fileName,
-        this.lastIR,
+        filteredIR,
         this.lastLayout,
         this.currentTheme
       );

@@ -121,7 +121,7 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run esbuild-base -- --minify",
-    "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node",
+    "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --external:pdfkit --external:fontkit --external:sharp --format=cjs --platform=node",
     "esbuild": "npm run esbuild-base -- --sourcemap",
     "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
     "pretest": "npm run esbuild",
@@ -130,10 +130,13 @@
     "package-only": "npm run vscode:prepublish && npx vsce package --out wire-dsl-extension.vsix"
   },
   "dependencies": {
-    "@wire-dsl/core": "^0.1.1"
+    "@wire-dsl/core": "^0.1.5",
+    "pdfkit": "0.17.2",
+    "sharp": "0.34.5",
+    "svg-to-pdfkit": "0.1.8"
   },
   "devDependencies": {
-    "@types/node": "25.0.10",
+    "@types/node": "25.1.0",
     "@types/vscode": "1.108.1",
     "@vscode/vsce": "3.7.1",
     "esbuild": "0.27.2",
