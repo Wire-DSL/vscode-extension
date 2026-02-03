@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.0
+
+### Minor Changes
+
+- 8e81c68: Migrate to new version of Wire DSL (separate engine and exporters)
+
 ## 0.4.3
 
 ### Patch Changes
