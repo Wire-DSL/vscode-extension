@@ -8,13 +8,13 @@ export class ParseService {
   private static coreModule: any = null;
 
   /**
-   * Load Core module (lazy-loaded and cached)
+   * Load Engine module (lazy-loaded and cached)
    */
   private static async getCoreModule(): Promise<any> {
     if (this.coreModule) {
       return this.coreModule;
     }
-    this.coreModule = require('@wire-dsl/core');
+    this.coreModule = require('@wire-dsl/engine');
     return this.coreModule;
   }
 

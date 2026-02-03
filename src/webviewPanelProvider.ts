@@ -159,13 +159,13 @@ export class WirePreviewPanel {
     }
     
     try {
-      // Load core module once and cache it
+      // Load engine module once and cache it
       if (!WirePreviewPanel.coreModule) {
         try {
-          WirePreviewPanel.coreModule = require('@wire-dsl/core');
-          console.log('Core module loaded and cached');
+          WirePreviewPanel.coreModule = require('@wire-dsl/engine');
+          console.log('Engine module loaded and cached');
         } catch (e) {
-          this.showError(`Failed to load @wire-dsl/core: ${e instanceof Error ? e.message : String(e)}`);
+          this.showError(`Failed to load @wire-dsl/engine: ${e instanceof Error ? e.message : String(e)}`);
           return;
         }
       }

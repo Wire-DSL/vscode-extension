@@ -4,7 +4,7 @@ import * as vscode from 'vscode';
  * Wire DSL Webview Preview Provider
  *
  * Provides a real-time preview panel for .wire files
- * - Renders .wire files as SVG using @wire-dsl/core
+ * - Renders .wire files as SVG using @wire-dsl/engine
  * - Supports live updates with 500ms debouncing
  * - Dark/light theme support
  */
@@ -146,12 +146,12 @@ export class WireWebviewProvider implements vscode.WebviewViewProvider {
     if (!this.view) return;
 
     try {
-      // Lazy load core module
+      // Lazy load engine module
       let coreModule: any;
       try {
-        coreModule = require('@wire-dsl/core');
+        coreModule = require('@wire-dsl/engine');
       } catch (e) {
-        this.showError(`Failed to load @wire-dsl/core: ${e instanceof Error ? e.message : String(e)}`);
+        this.showError(`Failed to load @wire-dsl/engine: ${e instanceof Error ? e.message : String(e)}`);
         return;
       }
 

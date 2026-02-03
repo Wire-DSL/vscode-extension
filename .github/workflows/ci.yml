@@ -20,6 +20,3 @@ jobs:
 
       - name: Build
         run: npm run esbuild
-
-    #   - name: Test
-    #     run: npm test
