@@ -15,10 +15,10 @@ export interface ExportFormat {
  * ExportManager
  * Handles file export for Wire DSL previews
  * 
- * Supports all formats via @wire-dsl/core:
- * - SVG: Vector graphics (via renderToSVG)
- * - PDF: Document format (via exportMultipagePDF)
- * - PNG: Raster image (via exportPNG)
+ * Supports all formats via @wire-dsl/engine and @wire-dsl/exporters:
+ * - SVG: Vector graphics (via renderToSVG from engine, exportSVG from exporters)
+ * - PDF: Document format (via exportMultipagePDF from exporters)
+ * - PNG: Raster image (via exportPNG from exporters)
  */
 export class ExportManager {
   /**
@@ -170,7 +170,7 @@ export class ExportManager {
   }
 
   /**
-   * Export SVG to file using @wire-dsl/core
+   * Export SVG to file using @wire-dsl/engine and @wire-dsl/exporters
    * For multiple screens: exports one file per screen with sanitized names
    * For single screen: exports to the specified file
    */
@@ -181,7 +181,8 @@ export class ExportManager {
     filePath: string
   ): Promise<void> {
     try {
-      const { SVGRenderer, exportSVG } = require('@wire-dsl/core');
+      const { SVGRenderer } = require('@wire-dsl/engine');
+      const { exportSVG } = require('@wire-dsl/exporters');
       
       const screens = ir.project.screens || [];
       if (screens.length === 0) {
@@ -240,8 +241,8 @@ export class ExportManager {
   }
 
   /**
-   * Export PDF to file using @wire-dsl/core
-   * Core API: exportMultipagePDF(svgs: Array<{svg, width, height, name}>, outputPath): Promise<void>
+   * Export PDF to file using @wire-dsl/engine and @wire-dsl/exporters
+   * Exporters API: exportMultipagePDF(svgs: Array<{svg, width, height, name}>, outputPath): Promise<void>
    * Generates one page per screen in the project
    * 
    * Uses SVGRenderer like CLI does - one renderer per screen with screenName parameter
@@ -253,7 +254,8 @@ export class ExportManager {
     filePath: string
   ): Promise<void> {
     try {
-      const { SVGRenderer, exportMultipagePDF } = require('@wire-dsl/core');
+      const { SVGRenderer } = require('@wire-dsl/engine');
+      const { exportMultipagePDF } = require('@wire-dsl/exporters');
       
       // Get all screens from IR
       const screens = ir.project.screens || [];
@@ -298,7 +300,7 @@ export class ExportManager {
   }
 
   /**
-   * Export PNG to file using @wire-dsl/core
+   * Export PNG to file using @wire-dsl/engine and @wire-dsl/exporters
    * For multiple screens: exports one file per screen with sanitized names
    * For single screen: exports to the specified file
    */
@@ -309,7 +311,8 @@ export class ExportManager {
     filePath: string
   ): Promise<void> {
     try {
-      const { SVGRenderer, exportPNG } = require('@wire-dsl/core');
+      const { SVGRenderer } = require('@wire-dsl/engine');
+      const { exportPNG } = require('@wire-dsl/exporters');
       
       const screens = ir.project.screens || [];
       if (screens.length === 0) {
