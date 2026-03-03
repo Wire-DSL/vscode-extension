@@ -1,7 +1,7 @@
 {
   "name": "wire-dsl",
   "displayName": "Wire DSL",
-  "description": "Syntax highlighting, autocompletion, and preview for Wire DSL (.wire) files",
+  "description": "Wireframe and UI prototyping with Wire DSL — syntax highlighting, smart autocompletion, live preview, and export to SVG/PDF/PNG",
   "version": "0.7.0",
   "publisher": "wire-dsl",
   "license": "MIT",
@@ -16,14 +16,14 @@
   "categories": [
     "Programming Languages",
     "Snippets",
-    "Other"
+    "Visualization"
   ],
   "keywords": [
-    "dsl",
-    "wire",
+    "wireframe",
+    "prototype",
     "ui",
-    "declarative",
-    "dashboard"
+    "dsl",
+    "wire"
   ],
   "activationEvents": [
     "onLanguage:wire",

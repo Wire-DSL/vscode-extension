@@ -1,217 +1,184 @@
 # Wire DSL - VS Code Extension
 
-Syntax highlighting, autocompletion, and preview for **Wire DSL** `.wire` files.
+Wireframe and UI prototyping with **Wire DSL** — syntax highlighting, smart autocompletion, live preview, and export to SVG/PDF/PNG.
 
 ## Features
 
-### 🎨 Syntax Highlighting
+### Syntax Highlighting
 Complete syntax highlighting for Wire DSL with intelligent tokenization:
-- **Keywords** (`project`, `screen`, `stack`, `grid`, `panel`, `split`, `form`, `table`)
-- **Components** (40+ UI components: `Button`, `Input`, `Card`, `Table`, etc.)
-- **Properties** (`id`, `label`, `color`, `background`, `width`, `height`, etc.)
-- **Values** (colors, spacing tokens, numbers)
-- **Comments** (`//` and `/* */` with proper styling)
+- **Keywords** — `project`, `screen`, `layout`, `component`, `cell`, `define`, `style`, `colors`, `mocks`
+- **Layouts** — `stack`, `grid`, `panel`, `split`, `card`
+- **Components** — 31 built-in UI components: `Button`, `Input`, `Table`, `Chart`, `Modal`, etc.
+- **Properties** — `text`, `variant`, `icon`, `padding`, `gap`, `direction`, `columns`, etc.
+- **Values** — colors, spacing tokens (`xs`, `sm`, `md`, `lg`, `xl`), numbers
+- **Comments** — `//` line and `/* */` block comments
 - **Bracket matching** and auto-pairing
 
-### 💡 Code Intelligence
+### Code Intelligence
 Context-aware development experience:
-- **Autocompletion** (Ctrl+Space) - Intelligent suggestions for keywords, components, and properties
-- **Hover Documentation** - Full component and property documentation on hover
-- **Go-to-Definition** (Ctrl+Click) - Jump to component definitions
-- **Find References** (Ctrl+Shift+H) - Find all usages of components
+- **Autocompletion** — Smart suggestions based on document scope (project, screen, layout)
+- **Required properties** — Component and layout snippets auto-include required properties
+- **Hover Documentation** — Component, layout, and keyword documentation on hover
+- **Go-to-Definition** (Ctrl+Click) — Jump to user-defined component definitions
+- **Find References** (Shift+F12) — Find all usages of user-defined components
+- **Property values** — Enum values for properties like `variant`, `direction`, `size`
 
-### 👁️ Live Preview
+### Live Preview
 Real-time visual feedback as you code:
-- **Interactive SVG Rendering** - See your Wire DSL rendered as interactive SVG
-- **Multi-Screen Support** - Switch between screens with a dropdown selector (when file has multiple screens)
-- **Persistent Zoom** - Zoom level is maintained when switching screens or editing code
-- **Dark/Light Theme Support** - Toggle between themes with automatic VS Code detection
-- **Zoom Controls** - Zoom in/out with Ctrl+Scroll wheel or on-screen buttons
-- **Auto-Refresh** - Updates automatically on file save
-- **Keyboard Shortcuts** (Ctrl+Shift+V to open)
+- **SVG Rendering** — See your Wire DSL rendered as SVG
+- **Multi-Screen Support** — Switch between screens with a dropdown selector
+- **Dark/Light Theme** — Toggle between themes or auto-detect from VS Code
+- **Zoom Controls** — Zoom in/out with Ctrl+Scroll or on-screen buttons
+- **Auto-Refresh** — Updates automatically as you edit
+
+### Export
+Export your wireframes to multiple formats:
+- **SVG** — Vector format, scalable
+- **PDF** — Document format
+- **PNG** — Raster image format
 
 ## Installation
 
-### From Marketplace (Coming Soon)
-Search for "Wire DSL" in VS Code Extensions
+### From Marketplace
+Search for **"Wire DSL"** in the VS Code Extensions panel, or visit the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=wire-dsl.wire-dsl).
 
-### Local Installation (Development)
+### Local Installation
 
 #### Prerequisites
-- **Node.js** 18+ ([download](https://nodejs.org/))
-- **npm** (comes with Node.js)
-- **VS Code** 1.75+
+- **Node.js** 18+
+- **VS Code** 1.108+
 
 #### Quick Start
 
 ```bash
-cd packages/vscode-extension
+git clone https://github.com/Wire-DSL/vscode-extension.git
+cd vscode-extension
 npm install
 npm run package
 ```
 
-This command:
-1. Compiles TypeScript to JavaScript (esbuild, minified)
-2. Packages the extension as `.vsix` (VS Code Extension format)
-3. Installs the extension in VS Code automatically
+This compiles, packages as `.vsix`, and installs the extension in VS Code. Restart VS Code to activate.
 
-**Restart VS Code** to activate the extension.
-
-#### Why Standalone npm?
-
-This project is a **standalone npm project** (independent from the monorepo pnpm):
-- ✅ No npm/pnpm conflicts - contributors use standard `npm install`
-- ✅ Compatible with VS Code tooling (`vsce` and `code --install-extension`)
-- ✅ Clear dependency resolution without monorepo interference
-
-**Important:** Always use `npm` (not `pnpm`) in this directory:
-```bash
-npm install      # ✅ Correct
-pnpm install     # ❌ Will cause conflicts
-```
-
-The `.npmrc` file enforces npm usage for this project.
-
-#### Development Workflow
+#### Development
 
 ```bash
-# One-time setup
-npm install
+npm install           # Install dependencies
+npm run esbuild-watch # Watch mode (recompiles on save)
+# Press F5 in VS Code to launch Extension Development Host
 
-# During development (watch mode)
-npm run esbuild-watch
-
-# Run in debug mode
-# In VS Code: Press F5 to launch extension with debugger
-
-# Run tests
-npm run test
-
-# Package without installing
-npm run package-only
+npm run test          # Run tests
+npm run package-only  # Build .vsix without installing
 ```
-
-## Project Structure
-
-This is a **standalone npm project** (independent from the monorepo pnpm).
-
-```
-vscode-extension/
-├── src/
-│   ├── extension.ts                  # Entry point & provider registration
-│   ├── completionProvider.ts         # Intelligent context-aware completions
-│   ├── hoverProvider.ts              # Hover documentation tooltips
-│   ├── definitionProvider.ts         # Go-to-definition navigation
-│   ├── referenceProvider.ts          # Find references (all usages)
-│   ├── webviewPanelProvider.ts       # Live SVG preview panel
-│   ├── webviewProvider.ts            # Alternative webview provider
-│   ├── data/                         # Component metadata & documentation
-│   │   ├── components.ts             # Component definitions
-│   │   └── documentation.ts          # Component & property docs
-│   └── utils/
-│       └── documentParser.ts         # DSL parsing utilities
-├── syntaxes/
-│   └── wire.tmLanguage.json          # TextMate grammar (syntax highlighting)
-├── package.json                      # npm dependencies & manifest
-├── package-lock.json                 # Locked versions (use npm)
-├── tsconfig.json                     # TypeScript configuration
-├── language-configuration.json       # Bracket pairing, indentation
-├── .npmrc                            # npm config (force npm usage)
-└── icons/                            # VS Code extension icons
-
-```
-
-For detailed architecture information, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Usage
 
-1. **Open a `.wire` file** - The extension automatically activates and applies syntax highlighting
-2. **Get code completion** - Press Ctrl+Space (Cmd+Space on macOS) or start typing to see intelligent suggestions
-3. **Explore documentation** - Hover over components and properties to see detailed documentation
-4. **Navigate your code** - Use Ctrl+Click to jump to definitions or Ctrl+Shift+H to find all references
-5. **Preview in real-time** - Press Ctrl+Shift+V (or click "Open Preview" in the editor title bar) to see live SVG rendering
+1. **Open a `.wire` file** — syntax highlighting activates automatically
+2. **Autocompletion** — start typing or press Ctrl+Space for context-aware suggestions
+3. **Hover** — hover over components, layouts, or keywords for documentation
+4. **Navigate** — Ctrl+Click on user-defined components to jump to their definition
+5. **Preview** — Ctrl+Shift+V to open live SVG preview
+6. **Export** — Ctrl+Shift+S to export as SVG, PDF, or PNG
 
 ### Keyboard Shortcuts
 
-| Action | Shortcut | Mac |
-|--------|----------|-----|
+| Action | Windows/Linux | Mac |
+|--------|---------------|-----|
 | Open Preview | Ctrl+Shift+V | Cmd+Shift+V |
-| Find References | Ctrl+Shift+H | Cmd+Shift+H |
+| Export As | Ctrl+Shift+S | Cmd+Shift+S |
 | Go to Definition | Ctrl+Click | Cmd+Click |
-| Zoom In (Preview) | Ctrl+Scroll | Cmd+Scroll |
-| Zoom Out (Preview) | Ctrl+Scroll | Cmd+Scroll |
+| Find References | Shift+F12 | Shift+F12 |
 
 ## Example
 
 Create a file named `dashboard.wire`:
 
-```wire
-project "My Dashboard" {
-  screen Dashboard {
-    grid {
-      columns: 2
-      gap: md
-      
-      Card {
-        id: "card1"
-        label: "Users"
+```
+project "Dashboard" {
+  style {
+    density: "comfortable"
+    spacing: "md"
+    radius: "md"
+  }
+
+  screen Main {
+    layout stack(direction: vertical, gap: lg, padding: xl) {
+      component Topbar title: "Dashboard" subtitle: "Overview"
+
+      layout grid(columns: 12, gap: md) {
+        cell span: 4 {
+          component Stat title: "Users" value: "1,234"
+        }
+        cell span: 4 {
+          component Stat title: "Revenue" value: "$12.5k" variant: success
+        }
+        cell span: 4 {
+          component Stat title: "Orders" value: "89" variant: info
+        }
       }
-      
-      Card {
-        id: "card2"
-        label: "Revenue"
+
+      layout card(padding: lg, gap: md) {
+        component Heading text: "Recent Activity"
+        component Table columns: "Name, Date, Status, Amount" rows: 5
       }
     }
   }
 }
 ```
 
-The Wire DSL extension will highlight:
-- `project` as a declaration keyword
-- `screen` and `Dashboard` appropriately
-- `grid` as a layout control
-- `Card` as a component type
-- Properties like `id`, `label`, `columns`, `gap` in property color
-- String values in string color
-- Numbers and spacing tokens in numeric color
+## Project Structure
 
-## Documentation
+```
+vscode-extension/
+├── src/
+│   ├── extension.ts              # Entry point & provider registration
+│   ├── completionProvider.ts     # Context-aware autocompletion
+│   ├── hoverProvider.ts          # Hover documentation
+│   ├── definitionProvider.ts     # Go-to-definition
+│   ├── referenceProvider.ts      # Find references
+│   ├── webviewPanelProvider.ts   # Live SVG preview panel
+│   └── services/
+│       ├── parseService.ts       # @wire-dsl/engine integration
+│       └── exportManager.ts      # SVG/PDF/PNG export
+├── syntaxes/
+│   └── wire.tmLanguage.json      # TextMate grammar
+├── icons/                        # Extension icons
+├── language-configuration.json   # Bracket pairing, indentation
+└── package.json
+```
 
-- [Wire DSL Syntax Guide](../../docs/dsl-syntax.md)
-- [Component Reference](../../docs/COMPONENTS_REFERENCE.md)
-- [Layout Engine](../../specs/layout-engine.md)
+### Dependencies
+
+| Package | Purpose |
+|---------|---------|
+| `@wire-dsl/engine` | Wire DSL parser, IR generator, and layout engine |
+| `@wire-dsl/exporters` | SVG/PDF/PNG export |
+| `@wire-dsl/language-support` | Component metadata, completions, documentation, and document parsing |
+
+## Built-in Components
+
+**Text** — Heading, Text, Label, Paragraph, Code
+**Actions** — Button, Link, IconButton
+**Inputs** — Input, Textarea, Select, Checkbox, Radio, Toggle
+**Navigation** — Topbar, SidebarMenu, Sidebar, Breadcrumbs, Tabs
+**Data** — Table, List, Stat, Card, Chart
+**Media** — Image, Icon
+**Layout** — Divider, Separate
+**Feedback** — Badge, Alert, Modal
+
+## Layout Containers
+
+| Layout | Description |
+|--------|-------------|
+| `stack` | Vertical or horizontal stacking (required: `direction`) |
+| `grid` | Column-based grid with `cell` children |
+| `split` | Side-by-side panes |
+| `panel` | Bordered container |
+| `card` | Card with shadow and rounded corners |
 
 ## Contributing
 
-### For Wire DSL Contributors
-
-The VS Code extension is a **standalone npm project** for easier contribution:
-
-```bash
-# Clone the repository
-git clone https://github.com/develop-wire-dsl/wire-dsl.git
-cd wire-dsl/packages/vscode-extension
-
-# Setup (one-time)
-npm install
-
-# Development with watch mode
-npm run esbuild-watch
-
-# Debug in VS Code
-# Press F5 to launch with debugger
-```
-
-### Why Standalone npm?
-
-- ✅ Independent from pnpm monorepo (no conflicts)
-- ✅ Easy for new contributors (`npm install` works)
-- ✅ Clear dependency resolution
-- ✅ Standard VS Code extension setup
-- ✅ Prevents npm/pnpm conflicts
-
-The extension is still part of the Wire DSL git repo for coordinated releases and documentation.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines.
 
 ## License
 
-MIT - See LICENSE file in root directory
+MIT
