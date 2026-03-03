@@ -2,7 +2,7 @@
 // Color indicators: keywords should be blue, components orange, strings green, etc.
 
 project "Wire DSL Test Dashboard" {
-  theme {
+  style {
     density: "normal"
     spacing: "md"
     radius: "md"

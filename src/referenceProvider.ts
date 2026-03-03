@@ -8,9 +8,9 @@
 import * as vscode from 'vscode';
 import {
   extractComponentDefinitions,
-  extractComponentReferences,
-  ComponentDefinition,
-} from './utils/documentParser';
+  findComponentReferences,
+  type ComponentDefinition,
+} from '@wire-dsl/language-support/document-parser';
 
 /**
  * Check if position is inside a component definition statement
@@ -81,11 +81,10 @@ export class WireReferenceProvider implements vscode.ReferenceProvider {
     }
 
     // Find all references to this component
-    const references = extractComponentReferences(text);
-    const componentReferences = references.filter((ref: { name: string; line: number; character: number }) => ref.name === componentName);
+    const componentReferences = findComponentReferences(text, componentName);
 
     // Convert references to locations
-    componentReferences.forEach((ref: { name: string; line: number; character: number }) => {
+    componentReferences.forEach((ref: { line: number; character: number }) => {
       const refPosition = new vscode.Position(ref.line, ref.character);
       locations.push(new vscode.Location(document.uri, refPosition));
     });

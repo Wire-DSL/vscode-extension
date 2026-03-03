@@ -1,5 +1,161 @@
 import * as vscode from 'vscode';
-import { COMPONENTS, LAYOUTS, PROPERTY_VALUES, KEYWORDS } from './data/components';
+import {
+  detectComponentContext,
+  getAlreadyDeclaredProperties,
+} from '@wire-dsl/language-support/context-detection';
+import {
+  getScopeBasedCompletions,
+  getComponentPropertiesForCompletion,
+  getPropertyValueSuggestions,
+  detectPropertyValueContext,
+  type CompletionItem as LSCompletionItem,
+} from '@wire-dsl/language-support/completions';
+import { COMPONENTS, LAYOUTS, PROPERTY_VALUES } from '@wire-dsl/language-support/components';
+
+/**
+ * Map language-support completion kinds to VS Code CompletionItemKind
+ */
+function toVSCodeKind(kind: string): vscode.CompletionItemKind {
+  switch (kind) {
+    case 'Keyword': return vscode.CompletionItemKind.Keyword;
+    case 'Component': return vscode.CompletionItemKind.Class;
+    case 'Property': return vscode.CompletionItemKind.Property;
+    case 'Value': return vscode.CompletionItemKind.Value;
+    case 'Variable': return vscode.CompletionItemKind.Variable;
+    default: return vscode.CompletionItemKind.Text;
+  }
+}
+
+/**
+ * Convert language-support CompletionItems to VS Code CompletionItems
+ */
+function convertCompletionItems(items: LSCompletionItem[]): vscode.CompletionItem[] {
+  return items.map((item, index) => {
+    const vsItem = new vscode.CompletionItem(item.label, toVSCodeKind(item.kind));
+    if (item.detail) vsItem.detail = item.detail;
+    if (item.documentation) vsItem.documentation = new vscode.MarkdownString(item.documentation);
+    if (item.insertText) vsItem.insertText = new vscode.SnippetString(item.insertText);
+    vsItem.sortText = String(index).padStart(3, '0');
+    return vsItem;
+  });
+}
+
+type DocumentScope = 'empty-file' | 'inside-project' | 'inside-screen' | 'inside-layout';
+
+/**
+ * Determine document scope by walking backwards through braces
+ * to find which keyword context (project/screen/layout) the cursor is inside.
+ *
+ * This replaces the package's determineScope which has a brace-counting bug
+ * when blocks like style{} or colors{} are present.
+ */
+function determineScope(textBeforeCursor: string): DocumentScope {
+  const cleanText = textBeforeCursor
+    .replace(/\/\/.*$/gm, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '');
+
+  if (cleanText.trim().length === 0) {
+    return 'empty-file';
+  }
+
+  // Walk backwards through characters counting brace depth
+  // Each time we find an unmatched '{', check what keyword is on that line
+  let depth = 0;
+  const lines = cleanText.split('\n');
+
+  for (let lineIdx = lines.length - 1; lineIdx >= 0; lineIdx--) {
+    const line = lines[lineIdx];
+    for (let i = line.length - 1; i >= 0; i--) {
+      if (line[i] === '}') depth++;
+      if (line[i] === '{') {
+        depth--;
+        if (depth < 0) {
+          // Found an unmatched opening brace — this is a parent context
+          if (/\blayout\s+/.test(line)) return 'inside-layout';
+          if (/\bscreen\s+/.test(line)) return 'inside-screen';
+          if (/\bproject\s+/.test(line)) return 'inside-project';
+          // Other blocks (style, colors, mocks, cell, define) — keep walking
+          depth = 0;
+        }
+      }
+    }
+  }
+
+  // If we found a project keyword but no unclosed brace, check if project exists
+  if (/\bproject\s+/.test(cleanText)) {
+    return 'inside-project';
+  }
+
+  return 'empty-file';
+}
+
+/**
+ * Build a snippet string for a property based on its type and options
+ */
+function buildPropertySnippet(prop: any, tabIndex: number): string {
+  if (prop.type === 'enum' && prop.options && prop.options.length > 0) {
+    // Limit options for icon-like enums to keep snippets readable
+    const options = prop.options.length > 10
+      ? prop.options.slice(0, 10)
+      : prop.options;
+    return `${prop.name}: \${${tabIndex}|${options.join(',')}|}`;
+  }
+  if (prop.type === 'boolean') {
+    return `${prop.name}: \${${tabIndex}|true,false|}`;
+  }
+  if (prop.type === 'number') {
+    return `${prop.name}: \${${tabIndex}:${prop.default || '0'}}`;
+  }
+  // string and others
+  return `${prop.name}: "\${${tabIndex}:${prop.default || prop.name}}"`;
+}
+
+/**
+ * Generate a layout snippet using only required properties
+ */
+function buildLayoutSnippet(layoutName: string): string {
+  const layout = LAYOUTS[layoutName as keyof typeof LAYOUTS];
+  if (!layout) return `${layoutName}() {\n\t$0\n}`;
+
+  const props = Object.values(layout.properties || {}) as any[];
+  const requiredProps = props.filter((p: any) => p.required);
+
+  let paramsSnippet = '';
+  if (requiredProps.length > 0) {
+    const params = requiredProps.map((prop: any, i: number) =>
+      buildPropertySnippet(prop, i + 1)
+    );
+    paramsSnippet = params.join(', ');
+  }
+
+  const tabNext = requiredProps.length + 1;
+
+  // Grid gets a cell child by default
+  if (layoutName === 'grid') {
+    return `${layoutName}(${paramsSnippet}) {\n\tcell span: \${${tabNext}:3} {\n\t\t$0\n\t}\n}`;
+  }
+
+  return `${layoutName}(${paramsSnippet}) {\n\t$0\n}`;
+}
+
+/**
+ * Generate a component snippet using required properties
+ */
+function buildComponentSnippet(componentName: string): string {
+  const component = COMPONENTS[componentName as keyof typeof COMPONENTS];
+  if (!component) return `${componentName} $0`;
+
+  const props = Object.values(component.properties || {}) as any[];
+  const requiredProps = props.filter((p: any) => p.required);
+
+  if (requiredProps.length === 0) return `${componentName} $0`;
+
+  const params = requiredProps.map((prop: any, i: number) =>
+    buildPropertySnippet(prop, i + 1)
+  );
+
+  return `${componentName} ${params.join(' ')}`;
+}
 
 /**
  * Wire DSL Completion Provider - Intelligent Context-Aware Completions
@@ -16,286 +172,133 @@ export class WireCompletionProvider implements vscode.CompletionItemProvider {
     const cursorOffset = document.offsetAt(position);
     const textBeforeCursor = documentText.substring(0, cursorOffset);
 
-    // HIGHEST PRIORITY: Check if we're in a component definition (before anything else)
-    const componentContext = this.detectComponentPropertyContext(lineText);
+    // HIGHEST PRIORITY: Check if we're in a component property context
+    const componentContext = detectComponentContext(lineText);
     if (componentContext) {
-      return this.getComponentPropertiesCompletions(componentContext, lineText);
+      const declared = getAlreadyDeclaredProperties(lineText);
+      const suggestions = getComponentPropertiesForCompletion(componentContext, [...declared]);
+      return this.convertPropertyCompletions(suggestions, componentContext);
     }
 
-    // Check immediate line context (layout types, component names, property values)
+    // Layout type after "layout " keyword — use rich VS Code snippets
     if (/layout\s+\w*$/.test(lineText)) {
       return this.getLayoutTypeCompletions();
     }
-    // Only show component names if we haven't finished typing a component name yet
-    // i.e., "component " or "component B" but NOT "component Button text:"
-    // Allow for indentation at the start of the line
+
+    // Component name after "component "
     if (/component\s+[A-Z]?\w*$/.test(lineText)) {
-      return this.getComponentCompletions();
+      return this.getComponentNameCompletions();
     }
+
+    // Property value after ":"
+    const pvContext = detectPropertyValueContext(lineText);
+    if (pvContext) {
+      return convertCompletionItems(
+        getPropertyValueSuggestions(pvContext.componentName, pvContext.propertyName)
+      );
+    }
+
+    // Fallback: generic property value (no component context, e.g. layout properties)
     if (/:\s+\w*$/.test(lineText)) {
-      return this.getPropertyValueCompletions(lineText);
+      return this.getGenericPropertyValueCompletions(lineText);
     }
 
-    // Determine broader document scope
-    const scope = this.determineScope(textBeforeCursor);
-    
-    if (scope === 'empty-file') {
-      return this.getProjectOnlyCompletion();
-    }
-    if (scope === 'inside-project') {
-      return this.getProjectLevelCompletions();
-    }
-    if (scope === 'inside-screen') {
-      return this.getScreenLevelCompletions();
-    }
+    // Scope-based completions
+    const scope = determineScope(textBeforeCursor);
+    const scopeItems = getScopeBasedCompletions(scope);
+
+    // Inside layout: only show keywords (component, layout)
+    // "cell" only appears as direct child of a grid layout
+    // Component names appear after "component ", layout types after "layout "
     if (scope === 'inside-layout') {
-      return this.getLayoutBodyCompletions();
+      const isInsideGrid = this.isDirectChildOfGrid(textBeforeCursor);
+      const allowedLabels = isInsideGrid
+        ? ['component', 'layout', 'cell']
+        : ['component', 'layout'];
+      const filtered = scopeItems.filter((item: LSCompletionItem) => allowedLabels.includes(item.label));
+
+      // Ensure "layout" keyword is always present for nested layouts
+      if (!filtered.some((item: LSCompletionItem) => item.label === 'layout')) {
+        filtered.push({
+          label: 'layout',
+          kind: 'Keyword',
+          detail: 'Add a nested layout',
+          insertText: 'layout ',
+        });
+      }
+
+      return convertCompletionItems(filtered);
     }
 
-    return [];
+    // Inside screen: only show "layout" keyword
+    // Layout types appear after "layout "
+    if (scope === 'inside-screen') {
+      const filtered = scopeItems.filter((item: LSCompletionItem) => item.label === 'layout');
+      return convertCompletionItems(filtered);
+    }
+
+    return convertCompletionItems(scopeItems);
   }
 
   /**
-   * Determine document scope by analyzing structure
+   * Check if cursor is a direct child of a grid layout
+   * Walks backwards through text counting braces to find the nearest parent layout
    */
-  private determineScope(textBeforeCursor: string): string {
+  private isDirectChildOfGrid(textBeforeCursor: string): boolean {
     const cleanText = textBeforeCursor
       .replace(/\/\/.*$/gm, '')
       .replace(/\/\*[\s\S]*?\*\//g, '');
 
-    if (cleanText.trim().length === 0) {
-      return 'empty-file';
-    }
+    // Walk backwards to find the nearest unclosed layout
+    let depth = 0;
+    const lines = cleanText.split('\n').reverse();
 
-    // Count braces and track keywords
-    let projectCount = 0;
-    let screenCount = 0;
-    let layoutCount = 0;
-    let braceCount = 0;
-
-    const lines = cleanText.split('\n');
     for (const line of lines) {
-      if (line.match(/\bproject\s+/)) projectCount++;
-      if (line.match(/\bscreen\s+/)) screenCount++;
-      if (line.match(/\blayout\s+/)) layoutCount++;
-      
-      braceCount += (line.match(/{/g) || []).length;
-      braceCount -= (line.match(/}/g) || []).length;
+      // Count braces in reverse
+      for (let i = line.length - 1; i >= 0; i--) {
+        if (line[i] === '}') depth++;
+        if (line[i] === '{') {
+          depth--;
+          if (depth < 0) {
+            // Found the opening brace of our parent — check if it's a grid
+            return /\bgrid\s*\(/.test(line);
+          }
+        }
+      }
     }
 
-    if (projectCount === 0) {
-      return 'empty-file';
-    }
-
-    // Inside project but haven't entered screen yet
-    if (screenCount === 0 && braceCount > 0) {
-      return 'inside-project';
-    }
-
-    // Inside a screen but no layout yet
-    if (screenCount > 0 && layoutCount === 0 && braceCount > 0) {
-      return 'inside-screen';
-    }
-
-    // Inside a layout
-    if (layoutCount > 0 && braceCount > 0) {
-      return 'inside-layout';
-    }
-
-    return 'inside-project';
+    return false;
   }
 
   /**
-   * Detect if we're inside a component definition (after component keyword)
-   * and return the component name if found.
-   * 
-   * Examples:
-   * - "component Button" → returns "Button"
-   * - "component Button text:" → returns "Button"
-   * - "component Button text: \"Save\"" → returns "Button"
-   * - "component B" → returns null (still typing component name)
+   * Layout type completions with VS Code-specific rich snippets
    */
-  private detectComponentPropertyContext(lineText: string): string | null {
-    // Match "component ComponentName" where ComponentName starts with uppercase
-    // This ensures we have a complete, recognized component name
-    const match = lineText.match(/component\s+([A-Z]\w*)/);
-    if (!match) {
-      return null;
-    }
-
-    const componentName = match[1];
-    
-    // Check if this is a valid component
-    if (!COMPONENTS[componentName as keyof typeof COMPONENTS]) {
-      return null;
-    }
-
-    // Get text after the component name
-    const afterComponent = lineText.substring(match.index! + match[0].length);
-    
-    // If there's nothing after, or only spaces, we're at the end - show properties
-    // Or if we have properties already (word followed by colon), show properties
-    if (afterComponent.match(/^\s*$/) || afterComponent.match(/^\s+[\w-]+:/)) {
-      return componentName;
-    }
-
-    return null;
-  }
-
   /**
-   * Only suggest "project" for empty file
+   * Component name completions with required properties as snippet
    */
-  private getProjectOnlyCompletion(): vscode.CompletionItem[] {
-    const item = new vscode.CompletionItem('project', vscode.CompletionItemKind.Keyword);
-    item.detail = 'Define a new Wire DSL project (root element)';
-    item.insertText = new vscode.SnippetString('project "${1:ProjectName}" {\n\t$0\n}');
-    item.sortText = '0-project'; // Prioritize
-    return [item];
-  }
-
-  /**
-   * Inside project: suggest tokens, colors, mocks, screen (NOT project)
-   */
-  private getProjectLevelCompletions(): vscode.CompletionItem[] {
+  private getComponentNameCompletions(): vscode.CompletionItem[] {
     const items: vscode.CompletionItem[] = [];
 
-    const tokensItem = new vscode.CompletionItem('tokens', vscode.CompletionItemKind.Keyword);
-    tokensItem.detail = 'Define design tokens';
-    tokensItem.insertText = new vscode.SnippetString('tokens ${1:density}: ${2:normal}');
-    tokensItem.sortText = '1-tokens';
-    items.push(tokensItem);
-
-    const colorsItem = new vscode.CompletionItem('colors', vscode.CompletionItemKind.Keyword);
-    colorsItem.detail = 'Define custom color palette';
-    colorsItem.insertText = new vscode.SnippetString('colors {\n\t${1:primary}: #${2:3B82F6}\n}');
-    colorsItem.sortText = '2-colors';
-    items.push(colorsItem);
-
-    const mocksItem = new vscode.CompletionItem('mocks', vscode.CompletionItemKind.Keyword);
-    mocksItem.detail = 'Define mock data';
-    mocksItem.insertText = new vscode.SnippetString('mocks {\n\t${1:key}: "${2:value}"\n}');
-    mocksItem.sortText = '3-mocks';
-    items.push(mocksItem);
-
-    const screenItem = new vscode.CompletionItem('screen', vscode.CompletionItemKind.Keyword);
-    screenItem.detail = 'Define a new screen/view';
-    screenItem.insertText = new vscode.SnippetString('screen ${1:ScreenName} {\n\tlayout ${2:stack}() {\n\t\t$0\n\t}\n}');
-    screenItem.sortText = '4-screen';
-    items.push(screenItem);
+    for (const [name, meta] of Object.entries(COMPONENTS)) {
+      const item = new vscode.CompletionItem(name, vscode.CompletionItemKind.Class);
+      item.detail = (meta as any).description;
+      item.documentation = new vscode.MarkdownString(
+        `**${name}**\n\n${(meta as any).description}`
+      );
+      item.insertText = new vscode.SnippetString(buildComponentSnippet(name));
+      items.push(item);
+    }
 
     return items;
   }
 
-  /**
-   * Inside screen: suggest only "layout" keyword
-   */
-  private getScreenLevelCompletions(): vscode.CompletionItem[] {
-    const item = new vscode.CompletionItem('layout', vscode.CompletionItemKind.Keyword);
-    item.detail = 'Define a layout for this screen';
-    item.insertText = 'layout ';
-    return [item];
-  }
-
-  /**
-   * Inside layout: suggest component, nested layout, or cell
-   */
-  private getLayoutBodyCompletions(): vscode.CompletionItem[] {
-    const items: vscode.CompletionItem[] = [];
-
-    const componentItem = new vscode.CompletionItem('component', vscode.CompletionItemKind.Keyword);
-    componentItem.detail = 'Add a component';
-    componentItem.insertText = 'component ';
-    componentItem.sortText = '1-component';
-    items.push(componentItem);
-
-    const layoutItem = new vscode.CompletionItem('layout', vscode.CompletionItemKind.Keyword);
-    layoutItem.detail = 'Add a nested layout';
-    layoutItem.insertText = 'layout ';
-    layoutItem.sortText = '2-layout';
-    items.push(layoutItem);
-
-    const cellItem = new vscode.CompletionItem('cell', vscode.CompletionItemKind.Keyword);
-    cellItem.detail = 'Define a cell in a grid';
-    cellItem.insertText = new vscode.SnippetString('cell span: ${1:6} {\n\t$0\n}');
-    cellItem.sortText = '3-cell';
-    items.push(cellItem);
-
-    return items;
-  }
-
-  /**
-   * Top-level completions (project block)
-   */
-  private getTopLevelCompletions(): vscode.CompletionItem[] {
-    const items: vscode.CompletionItem[] = [];
-
-    // project keyword
-    const projectItem = new vscode.CompletionItem('project', vscode.CompletionItemKind.Keyword);
-    projectItem.detail = 'Define a new Wire DSL project';
-    projectItem.insertText = new vscode.SnippetString('project "${1:ProjectName}" {\n\t$0\n}');
-    items.push(projectItem);
-
-    // tokens keyword
-    const tokensItem = new vscode.CompletionItem('tokens', vscode.CompletionItemKind.Keyword);
-    tokensItem.detail = 'Define design tokens (density, spacing, radius, etc.)';
-    tokensItem.insertText = new vscode.SnippetString('tokens ${1:density}: ${2:normal}');
-    items.push(tokensItem);
-
-    // colors block
-    const colorsItem = new vscode.CompletionItem('colors', vscode.CompletionItemKind.Keyword);
-    colorsItem.detail = 'Define custom color palette';
-    colorsItem.insertText = new vscode.SnippetString('colors {\n\t${1:primary}: #${2:3B82F6}\n}');
-    items.push(colorsItem);
-
-    // mocks block
-    const mocksItem = new vscode.CompletionItem('mocks', vscode.CompletionItemKind.Keyword);
-    mocksItem.detail = 'Define mock data for table/list components';
-    mocksItem.insertText = new vscode.SnippetString('mocks {\n\t${1:key}: "${2:value}"\n}');
-    items.push(mocksItem);
-
-    // screen keyword
-    const screenItem = new vscode.CompletionItem('screen', vscode.CompletionItemKind.Keyword);
-    screenItem.detail = 'Define a new screen/view';
-    screenItem.insertText = new vscode.SnippetString('screen ${1:ScreenName} {\n\tlayout ${2:stack}() {\n\t\t$0\n\t}\n}');
-    items.push(screenItem);
-
-    return items;
-  }
-
-  /**
-   * Screen-level completions
-   */
-  private getScreenCompletions(): vscode.CompletionItem[] {
-    const items: vscode.CompletionItem[] = [];
-
-    // layout types
-    items.push(...this.getLayoutTypeCompletions());
-
-    return items;
-  }
-
-  /**
-   * Layout type completions (stack, grid, split, panel, card)
-   */
   private getLayoutTypeCompletions(): vscode.CompletionItem[] {
     const items: vscode.CompletionItem[] = [];
 
     for (const [key, layout] of Object.entries(LAYOUTS)) {
       const item = new vscode.CompletionItem(key, vscode.CompletionItemKind.Keyword);
-      item.detail = layout.description;
-
-      if (key === 'stack') {
-        item.insertText = new vscode.SnippetString('stack(direction: ${1|vertical,horizontal|}, gap: ${2|xs,sm,md,lg,xl|}, padding: ${3|xs,sm,md,lg,xl|}) {\n\t$0\n}');
-      } else if (key === 'grid') {
-        item.insertText = new vscode.SnippetString('grid(columns: ${1:12}, gap: ${2|xs,sm,md,lg,xl|}) {\n\tcell span: ${3:3} {\n\t\t$0\n\t}\n}');
-      } else if (key === 'split') {
-        item.insertText = new vscode.SnippetString('split(sidebar: ${1:260}, gap: ${2|xs,sm,md,lg,xl|}) {\n\tlayout stack() {\n\t\t$0\n\t}\n\tlayout stack() {\n\t\t\n\t}\n}');
-      } else if (key === 'panel') {
-        item.insertText = new vscode.SnippetString('panel(padding: ${1|xs,sm,md,lg,xl|}, background: ${2:white}) {\n\t$0\n}');
-      } else if (key === 'card') {
-        item.insertText = new vscode.SnippetString('card(padding: ${1|xs,sm,md,lg,xl|}, gap: ${2|xs,sm,md,lg,xl|}, radius: ${3|xs,sm,md,lg,xl|}) {\n\t$0\n}');
-      }
-
+      item.detail = (layout as any).description;
+      item.insertText = new vscode.SnippetString(buildLayoutSnippet(key));
       items.push(item);
     }
 
@@ -303,121 +306,52 @@ export class WireCompletionProvider implements vscode.CompletionItemProvider {
   }
 
   /**
-   * Component type completions
+   * Convert property completions with VS Code snippet support for enum values
    */
-  private getComponentCompletions(): vscode.CompletionItem[] {
-    const items: vscode.CompletionItem[] = [];
+  private convertPropertyCompletions(
+    suggestions: LSCompletionItem[],
+    componentName: string
+  ): vscode.CompletionItem[] {
+    return suggestions.map((item, index) => {
+      const vsItem = new vscode.CompletionItem(item.label, vscode.CompletionItemKind.Property);
+      vsItem.detail = item.detail || `Property of ${componentName}`;
+      if (item.documentation) vsItem.documentation = new vscode.MarkdownString(item.documentation);
+      vsItem.sortText = String(index).padStart(3, '0');
 
-    for (const [name, metadata] of Object.entries(COMPONENTS)) {
-      const item = new vscode.CompletionItem(name, vscode.CompletionItemKind.Class);
-      item.detail = metadata.description;
-      item.documentation = new vscode.MarkdownString(
-        `**${metadata.name}**\n\n${metadata.description}\n\n**Example:**\n\`\`\`wire\n${metadata.example}\n\`\`\``
-      );
-      item.insertText = new vscode.SnippetString(name + ' $0');
-      items.push(item);
-    }
-
-    return items;
-  }
-
-  /**
-   * After "component ComponentName ": suggest properties for that component
-   * Filters out properties that are already declared on the current line
-   */
-  private getComponentPropertiesCompletions(componentName: string, lineText: string): vscode.CompletionItem[] {
-    const items: vscode.CompletionItem[] = [];
-    const component = COMPONENTS[componentName as keyof typeof COMPONENTS];
-
-    if (!component) {
-      return items;
-    }
-
-    // Get component-specific properties
-    const properties = component.properties || [];
-
-    // Extract already-declared properties from the line
-    // Match patterns like "propertyName: " or "propertyName: value"
-    const declaredPropsMatch = lineText.matchAll(/(\w+):\s*/g);
-    const declaredProps = new Set<string>();
-    for (const match of declaredPropsMatch) {
-      declaredProps.add(match[1]);
-    }
-
-    for (const propName of properties) {
-      // Skip if this property is already declared on this line
-      if (declaredProps.has(propName)) {
-        continue;
-      }
-
-      const item = new vscode.CompletionItem(propName, vscode.CompletionItemKind.Property);
-      item.detail = `Property of ${componentName}`;
-      
-      // Check component-specific property values first
-      const componentSpecificValues = component.propertyValues?.[propName];
-      if (componentSpecificValues && componentSpecificValues.length > 0) {
-        const valuesStr = componentSpecificValues.join(',');
-        item.insertText = new vscode.SnippetString(`${propName}: \${1|${valuesStr}|}`);
+      // Check if the property has enum values to create a rich snippet
+      const values = getPropertyValueSuggestions(componentName, item.label);
+      if (values.length > 0) {
+        const valuesStr = values.map(v => v.label).join(',');
+        vsItem.insertText = new vscode.SnippetString(`${item.label}: \${1|${valuesStr}|}`);
+      } else if (item.insertText) {
+        vsItem.insertText = new vscode.SnippetString(item.insertText);
       } else {
-        // Fall back to global property values
-        const globalValues = PROPERTY_VALUES[propName];
-        if (globalValues && globalValues.length > 0) {
-          const valuesStr = globalValues.join(',');
-          item.insertText = new vscode.SnippetString(`${propName}: \${1|${valuesStr}|}`);
-        } else {
-          // Default: text input
-          item.insertText = new vscode.SnippetString(`${propName}: "\${1:value}"`);
-        }
+        vsItem.insertText = new vscode.SnippetString(`${item.label}: "\${1:value}"`);
       }
-      
-      items.push(item);
-    }
 
-    return items;
+      return vsItem;
+    });
   }
 
   /**
-   * Cell completion for grid layouts
+   * Generic property value completions (for properties outside component context)
    */
-  private getCellCompletions(): vscode.CompletionItem[] {
-    const items: vscode.CompletionItem[] = [];
-
-    const spanItem = new vscode.CompletionItem('span', vscode.CompletionItemKind.Property);
-    spanItem.detail = 'Number of columns this cell spans';
-    spanItem.insertText = new vscode.SnippetString('span: ${1:6}');
-    items.push(spanItem);
-
-    const alignItem = new vscode.CompletionItem('align', vscode.CompletionItemKind.Property);
-    alignItem.detail = 'Alignment within cell';
-    alignItem.insertText = new vscode.SnippetString('align: ${1|start,center,end|}');
-    items.push(alignItem);
-
-    return items;
-  }
-
-  /**
-   * Property value completions based on property name
-   */
-  private getPropertyValueCompletions(lineText: string): vscode.CompletionItem[] {
-    const items: vscode.CompletionItem[] = [];
-
-    // Extract property name
+  private getGenericPropertyValueCompletions(lineText: string): vscode.CompletionItem[] {
     const propertyMatch = lineText.match(/(\w+):\s*\w*$/);
     if (!propertyMatch) {
-      return items;
+      return [];
     }
 
     const propertyName = propertyMatch[1];
     const values = PROPERTY_VALUES[propertyName];
-
-    if (values) {
-      for (const value of values) {
-        const item = new vscode.CompletionItem(value, vscode.CompletionItemKind.Value);
-        item.insertText = value;
-        items.push(item);
-      }
+    if (!values) {
+      return [];
     }
 
-    return items;
+    return values.map((value: string) => {
+      const item = new vscode.CompletionItem(value, vscode.CompletionItemKind.Value);
+      item.insertText = value;
+      return item;
+    });
   }
 }

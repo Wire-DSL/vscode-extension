@@ -51,11 +51,11 @@
       "patterns": [
         {
           "name": "keyword.declaration.wire",
-          "match": "\\b(project|screen|layout|component|cell)\\b"
+          "match": "\\b(project|screen|layout|component|cell|define)\\b"
         },
         {
           "name": "keyword.declaration.wire",
-          "match": "\\b(tokens|colors|mocks)\\b"
+          "match": "\\b(style|colors|mocks)\\b"
         },
         {
           "name": "keyword.control.wire",
@@ -67,7 +67,7 @@
       "patterns": [
         {
           "name": "entity.name.class.wire",
-          "match": "\\b(Heading|Text|Paragraph|Label|Button|IconButton|Input|Textarea|Select|Checkbox|CheckboxGroup|Radio|RadioGroup|Toggle|Image|Icon|Divider|Badge|Link|Breadcrumbs|Tabs|SidebarMenu|Topbar|Sidebar|Panel|Card|StatCard|ChartPlaceholder|Table|List|Modal|Alert|Code|Spinner|Avatar)\\b"
+          "match": "\\b(Heading|Text|Label|Paragraph|Button|Link|Input|Textarea|Select|Checkbox|Radio|Toggle|Topbar|SidebarMenu|Sidebar|Breadcrumbs|Tabs|Table|List|Stat|Card|Chart|Code|Image|Icon|IconButton|Divider|Separate|Badge|Alert|Modal)\\b"
         }
       ]
     },
@@ -75,7 +75,7 @@
       "patterns": [
         {
           "name": "variable.other.property.wire",
-          "match": "\\b(title|subtitle|text|content|label|placeholder|items|active|variant|user|icon|rows|columns|span|sidebar|direction|gap|padding|background|color|align|radius|border|mock|density|spacing|stroke|font|disabled|required|readonly|type|value|src|alt|height|itemsMock|dismissible)\\b"
+          "match": "\\b(actions|active|align|avatar|background|block|bold|border|caption|captionAlign|checked|circle|code|color|columns|disabled|enabled|flat|height|icon|iconAlign|iconLeft|iconRight|icons|innerBorder|italic|items|itemsMock|label|labelSpace|level|mock|padding|pages|pagination|paginationAlign|placeholder|radius|random|rows|rowsMock|separator|size|spacing|subtitle|text|title|type|user|value|variant|visible)\\b"
         }
       ]
     },

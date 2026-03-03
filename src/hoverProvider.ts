@@ -4,87 +4,43 @@
  */
 
 import * as vscode from 'vscode';
-import { COMPONENTS, LAYOUTS, KEYWORDS } from './data/components';
+import { COMPONENTS, LAYOUTS, KEYWORDS } from '@wire-dsl/language-support/components';
 import {
   getComponentDocumentation,
   getLayoutDocumentation,
   getKeywordDocumentation,
-} from './data/documentation';
-import { extractComponentDefinitions } from './utils/documentParser';
+} from '@wire-dsl/language-support/documentation';
+import {
+  extractComponentDefinitions,
+  getTokenAtPosition as getToken,
+} from '@wire-dsl/language-support/document-parser';
 
 /**
- * Extract token at cursor position
+ * Extract token at cursor position and classify its type
  */
 function getTokenAtPosition(
   document: vscode.TextDocument,
   position: vscode.Position
 ): { token: string; range: vscode.Range; type: string } | null {
-  const line = document.lineAt(position);
-  const text = line.text;
-  const offset = position.character;
-
-  // Skip if in comment
-  if (text.includes('//')) {
-    const commentIndex = text.indexOf('//');
-    if (offset > commentIndex) {
-      return null;
-    }
-  }
-
-  // Skip if in string
-  if (text.includes('"') || text.includes("'")) {
-    const doubleQuoteStart = text.lastIndexOf('"', offset);
-    const doubleQuoteEnd = text.indexOf('"', offset);
-    const singleQuoteStart = text.lastIndexOf("'", offset);
-    const singleQuoteEnd = text.indexOf("'", offset);
-
-    const inDoubleQuotes =
-      doubleQuoteStart !== -1 &&
-      (doubleQuoteEnd === -1 || doubleQuoteEnd > offset);
-    const inSingleQuotes =
-      singleQuoteStart !== -1 &&
-      (singleQuoteEnd === -1 || singleQuoteEnd > offset);
-
-    if (inDoubleQuotes || inSingleQuotes) {
-      return null;
-    }
-  }
-
-  // Extract word boundaries (alphanumeric, underscore)
-  let start = offset;
-  while (start > 0 && /[a-zA-Z0-9_]/.test(text[start - 1])) {
-    start--;
-  }
-
-  let end = offset;
-  while (end < text.length && /[a-zA-Z0-9_]/.test(text[end])) {
-    end++;
-  }
-
-  if (start === end) {
+  const result = getToken(document.getText(), position.line, position.character);
+  if (!result) {
     return null;
   }
 
-  const token = text.substring(start, end);
+  const { token, startChar, endChar } = result;
   const range = new vscode.Range(
-    new vscode.Position(position.line, start),
-    new vscode.Position(position.line, end)
+    new vscode.Position(position.line, startChar),
+    new vscode.Position(position.line, endChar)
   );
 
   // Determine token type
   let type = 'unknown';
-
-  // Check if it's a keyword
   const allKeywords = Object.values(KEYWORDS).flat();
   if (allKeywords.includes(token)) {
     type = 'keyword';
-  }
-  // Check if it's a component
-  else if (COMPONENTS[token as keyof typeof COMPONENTS]) {
+  } else if (COMPONENTS[token as keyof typeof COMPONENTS]) {
     type = 'component';
-  }
-  // Check if it's a layout
-  else if (LAYOUTS[token as keyof typeof LAYOUTS]) {
+  } else if (LAYOUTS[token as keyof typeof LAYOUTS]) {
     type = 'layout';
   }
 
