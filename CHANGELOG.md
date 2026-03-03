@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.1
+
+### Patch Changes
+
+- f60f82a: update README
+
 ## 0.7.0
 
 ### Minor Changes
