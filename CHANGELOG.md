@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.0
+
+### Minor Changes
+
+- 51d210d: remove components and documentation files; refactor imports and syntax highlighting
+
 ## 0.5.0
 
 ### Minor Changes
