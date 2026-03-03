@@ -5,12 +5,12 @@
  */
 
 import * as vscode from 'vscode';
-import { COMPONENTS } from './data/components';
+import { COMPONENTS } from '@wire-dsl/language-support/components';
 import {
   extractComponentDefinitions,
   getTokenAtPosition,
   isComponentReference,
-} from './utils/documentParser';
+} from '@wire-dsl/language-support/document-parser';
 
 export class WireDefinitionProvider implements vscode.DefinitionProvider {
   provideDefinition(

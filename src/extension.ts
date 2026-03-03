@@ -21,8 +21,7 @@ export function activate(context: vscode.ExtensionContext) {
     completionProvider,
     ' ', // Trigger on space
     '(', // Trigger on opening paren
-    ':', // Trigger on colon
-    '{' // Trigger on opening brace
+    ':' // Trigger on colon
   );
   context.subscriptions.push(completionDisposable);
 

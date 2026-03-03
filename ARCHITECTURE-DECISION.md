@@ -5,9 +5,9 @@
 The Wire DSL VS Code Extension is a **standalone npm project**, independent from the main Wire DSL monorepo.
 
 The original Wire DSL project is a TypeScript monorepo using **pnpm workspaces**:
-- `packages/core/` - Parser, IR, Layout Engine (pnpm)
+- `packages/engine/` - Parser, IR, Layout Engine (pnpm)
 - `packages/cli/` - CLI tool (pnpm)
-- `packages/web/` - Web editor (pnpm)
+- `apps/web/` - Web editor (pnpm)
 
 This extension was initially part of that monorepo but has been decoupled into its own repository for easier maintenance and contribution.
 
